@@ -1,0 +1,121 @@
+Analyze the symbol currently open on my TradingView chart. Do not switch symbols.
+Act as a senior analyst using my two separate frameworks defined in rules.json: OTE Entry and HTF S&D Entry.
+Analyze in this order:
+
+---
+
+STEP 1: LOCATION (Daily)
+- Measure swing high wick to swing low wick on Daily
+- Divide into 3 equal sections
+- State clearly: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
+- If Equilibrium: state NO TRADE and stop analysis
+- If Discount: bias is LONG only
+- If Premium: bias is SHORT only
+
+---
+
+STEP 2: DIRECTION (Daily)
+- Identify 6 recent pivots (3 highs + 3 lows) from current price backwards
+- Uptrend: minimum 2 x HL confirmed (HH not required)
+- Downtrend: minimum 2 x LH confirmed (LL not required)
+- Sideways: equal highs and lows — state NO TRADE and stop analysis
+- Anticipatory: 3-4 pivots pointing to next HL or LH — flag as lower conviction
+- State clearly: Uptrend / Downtrend / Sideways / Anticipatory
+
+---
+
+STEP 3: ACTION MATRIX CHECK
+- Cross reference Location + Direction using action matrix from rules.json:
+  * Long valid: Discount + Uptrend or Sideways
+  * Short valid: Premium + Downtrend or Sideways
+  * No Action: everything else — including Discount + Downtrend and Premium + Uptrend
+- State whether a Long or Short is valid, lower conviction, or No Action
+- If No Action: stop analysis
+
+---
+
+STEP 4A: OTE FRAMEWORK CHECK
+- Identify the last impulsive leg on 4H (wick to wick)
+- Calculate OTE retracement zone: 70.5% to 88.6%
+- State exact price levels for 70.5% (entry) and 88.6% (zone bottom) and 100% (SL level)
+
+OTE Confluence Checklist (assess all 4):
+1. Location confirmed in Step 1
+2. Liquidity sweep before the impulsive leg:
+   - With trend: odds enhancer only, not mandatory
+   - Counter trend or anticipatory: MANDATORY — if absent state NO TRADE
+3. BOS + Imbalance (FVG) confirming the impulsive leg — present or absent?
+4. Price retracing toward 70.5% — has it reached entry or still approaching?
+
+OTE Setup Grade:
+- Absolute best: Small Brother (4H S&D zone) located within 70.5%-88.6% range + all 4 checklist items confirmed
+- A+: All 4 checklist items confirmed + FVG near entry (no Small Brother)
+- A: With trend + BOS confirmed + retracing to OTE (no sweep, no Small Brother, no FVG)
+- No trade: Counter trend or anticipatory without liquidity sweep
+
+OTE Trade Parameters (if setup exists):
+- Limit entry: 70.5% retracement level
+- SL: Below swing low wick (100% Fibonacci level)
+- TP: Next structural target or opposing zone
+- R:R: Calculate and state — minimum 1:2 required
+
+---
+
+STEP 4B: HTF S&D FRAMEWORK CHECK
+- Read zones from S&D Pro indicator first — prioritize indicator zones over structural approximations
+- For each zone note the following tags from the indicator:
+  * Timeframe (Daily or 4H)
+  * Formation label (RBD, RBR, DBR, DBD)
+  * F = Flip zone (NOT freshness)
+  * O = Original zone
+  * LoL = Level on Top of Level
+- If indicator returns no data fall back to structural analysis and flag output as approximate
+
+- Identify the nearest qualified Daily zone (Big Brother) — demand below price for longs, supply above for shorts
+- Identify any 4H zone (Small Brother) within or aligning with the Daily zone
+- Check all 6 zone qualifiers from rules.json for each zone:
+  1. Departure: explosive or decisive leg-out? (Great/Acceptable/Disqualified)
+  2. Base Duration: how many indecisive candles? (1-3 Great / 4-5 Acceptable / 6+ Disqualified)
+  3. Freshness: CANNOT be confirmed by indicator — flag as UNCONFIRMED and instruct trader to verify visually before entry
+  4. Originality: use O tag from indicator if present — if no tag, look left and assess from structure
+  5. Profit Margin: minimum 1:3 from proximal to next opposing zone
+  6. Arrival: for counter trend/sideways only — steep decisive/explosive arrival required
+
+LOL Check:
+- Are there two zones stacked on the same timeframe?
+- Is the gap between them smaller than either zone?
+- If yes: LOL confirmed — entry at proximal of wider version of lower zone
+
+HTF S&D Trade Parameters (if setup exists):
+- Entry: Proximal line of zone (preferred version) or wider version proximal for LOL
+- SL: Distal line + 33% buffer
+- TP: Next structural target or opposing zone
+- R:R: Calculate and state — minimum 1:2 required
+
+---
+
+STEP 5: MACRO CONTEXT
+- Search web for latest news on current symbol + DXY move + Fed/CPI impact
+- Does macro confirm or conflict with technical bias?
+- State clearly: Confirms / Conflicts / Neutral
+
+---
+
+STEP 6: FINAL VERDICT
+State separately for each framework:
+
+OTE Framework:
+- Setup exists: Yes / No
+- Grade: Absolute Best / A+ / A / No setup
+- Entry: [price] | SL: [price] | TP: [price] | R:R: [ratio]
+- Active now or waiting for price to reach entry zone?
+
+HTF S&D Framework:
+- Setup exists: Yes / No
+- Grade: A / B / No setup
+- Entry: [price] | SL: [price] | TP: [price] | R:R: [ratio]
+- Active now or waiting for price to reach zone?
+
+Overall Bias: Bullish / Bearish / No trade
+What invalidates this analysis?
+Be direct. No filler. If there is no setup in either framework, say so.

@@ -1,0 +1,32 @@
+Analyze the symbol currently open on my TradingView chart. Do not switch symbols.
+This is a quick pre-filter only. Do NOT run full analysis. Do NOT check zones, OTE, or macro.
+Only complete these 3 steps and give a single verdict at the end.
+
+---
+
+STEP 1: LOCATION (Daily)
+- Measure swing high wick to swing low wick on Daily
+- Divide into 3 equal sections
+- State: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
+- If Equilibrium: output "NO TRADE — Equilibrium" and stop immediately
+
+---
+
+STEP 2: DIRECTION (Daily)
+- Identify 6 recent pivots (3 highs + 3 lows) from current price backwards
+- State: Uptrend / Downtrend / Sideways / Anticipatory
+- If Sideways: output "NO TRADE — Sideways" and stop immediately
+
+---
+
+STEP 3: ACTION MATRIX
+- Cross reference Location + Direction using simplified rules:
+  * Long valid: Discount + Uptrend or Sideways only
+  * Short valid: Premium + Downtrend or Sideways only
+  * No Action: everything else — including Discount + Downtrend and Premium + Uptrend
+- If No Action: output "NO TRADE — No Action" and stop immediately
+
+---
+
+VERDICT (one line only):
+[PAIR] — [Location] — [Direction] — [Long valid / Short valid / No Action] — PROCEED or NO TRADE

@@ -1,65 +1,289 @@
 {
-  "watchlist": ["BTCUSDT"],
-  "default_timeframe": "1",
+  "watchlist": "Use my saved TradingView watchlist called X",
+  "default_timeframe": 240,
 
-  "strategy": {
-    "name": "10-Second Momentum Scalper",
-    "sources": [
-      "Price momentum — buy if last close > previous close (green candle)",
-      "RSI filter — only trade when RSI is not at an extreme (30–70 range)"
-    ],
-    "primary_timeframes": [
-      "1-minute (signal source)",
-      "10-second execution loop"
-    ]
+  "methodology": "Two separate frameworks: OTE Entry and HTF S&D Entry. Each has its own rules, confluences, and SL placement. Do not mix them.",
+
+  "timeframe_hierarchy": {
+    "Daily": "Location (premium/discount/equilibrium) + Direction (trend)",
+    "4H": "Market timing and zone identification for both OTE and HTF S&D entries"
   },
 
-  "indicators": {
-    "rsi_14": "Momentum filter. Only trade when RSI is between 30–70 (avoid extremes).",
-    "price_momentum": "Compare last close vs previous close. Up = long signal. Down = short signal."
+  "candle_classification": {
+    "indecisive": {
+      "body_percent": "50% or less of total candle range (high to low)",
+      "implication": "Balance between supply and demand — orders being accumulated"
+    },
+    "decisive": {
+      "body_percent": "More than 50% of total candle range",
+      "implication": "Institutional activity — one side consuming orders"
+    },
+    "explosive": {
+      "body_percent": "More than 70% of total candle range AND abnormally bigger than surrounding candles",
+      "implication": "Clear institutional activity — strong imbalance"
+    }
   },
 
-  "bias_criteria": {
-    "bullish": [
-      "Last 1-min candle closed higher than the one before it",
-      "RSI is between 30 and 70"
-    ],
-    "bearish": [
-      "Last 1-min candle closed lower than the one before it",
-      "RSI is between 30 and 70"
-    ],
-    "neutral": [
-      "RSI is above 70 (overbought — skip)",
-      "RSI is below 30 (oversold — skip)",
-      "Candle close change is less than 0.05% (chop — skip)"
-    ]
+  "location_analysis": {
+    "timeframe": "Daily",
+    "method": "Measure swing high wick to swing low wick on Daily, divide into 3 equal sections",
+    "zones": {
+      "discount": "0% to 33% — look for longs only",
+      "equilibrium": "33% to 66% — NO TRADE regardless of direction",
+      "premium": "66% to 100% — look for shorts only"
+    },
+    "hard_rule": "Equilibrium = no trade. This is a hard filter, not a suggestion."
   },
 
-  "entry_rules": {
-    "long": [
-      "Last close > previous close by at least 0.05%",
-      "RSI between 30 and 70",
-      "Enter market buy immediately"
-    ],
-    "short": [
-      "Last close < previous close by at least 0.05%",
-      "RSI between 30 and 70",
-      "Enter market sell immediately"
-    ]
+  "direction_analysis": {
+    "timeframe": "Daily",
+    "method": "Identify 6 recent pivots (3 highs + 3 lows) from current price backwards",
+    "uptrend": {
+      "required": "Minimum 2 x Higher Lows (HL)",
+      "note": "Higher Highs not necessarily required — HL sequence is the key signal"
+    },
+    "downtrend": {
+      "required": "Minimum 2 x Lower Highs (LH)",
+      "note": "Lower Lows not necessarily required — LH sequence is the key signal"
+    },
+    "sideways": {
+      "definition": "Equal highs and equal lows — no clear sequence",
+      "rule": "If no clear trend is recognisable, define it as sideways — no trade"
+    },
+    "anticipatory": {
+      "definition": "Entry before trend is fully confirmed using 3-4 previous pivots to anticipate next pivot",
+      "rule": "Valid setup but lower conviction than confirmed trend — requires additional confluences"
+    }
   },
 
-  "exit_rules": [
-    "Exit automatically after 10 seconds (next loop tick closes previous position)",
-    "No manual exit management — pure time-based scalp"
-  ],
+  "action_matrix": {
+    "description": "Location + Direction must be assessed before any trade. All must be met.",
+    "demand_zones": {
+      "discount": {
+        "uptrend": "Long",
+        "sideways": "Long",
+        "downtrend": "No Action — do not long in downtrend"
+      },
+      "equilibrium": {
+        "uptrend": "No Action",
+        "sideways": "No Action",
+        "downtrend": "No Action"
+      },
+      "premium": {
+        "uptrend": "No Action",
+        "sideways": "No Action",
+        "downtrend": "No Action"
+      }
+    },
+    "supply_zones": {
+      "premium": {
+        "uptrend": "No Action — do not short in uptrend",
+        "sideways": "Short",
+        "downtrend": "Short"
+      },
+      "equilibrium": {
+        "uptrend": "No Action",
+        "sideways": "No Action",
+        "downtrend": "No Action"
+      },
+      "discount": {
+        "uptrend": "No Action",
+        "sideways": "No Action",
+        "downtrend": "No Action"
+      }
+    }
+  },
 
-  "risk_rules": [
-    "Fixed trade size: 1% of portfolio per trade",
-    "Maximum trade size: $3.00",
-    "Maximum 6 trades per 60-second run",
-    "No stop loss — exit is time-based at next tick",
-    "For demo purposes only — minimum BitGet order size may apply"
-  ],
+  "framework_1_OTE_entry": {
+    "description": "OTE entry using Fibonacci retracement of last impulsive leg. Separate from HTF S&D entry.",
+    "fibonacci_measurement": "Wick to wick — swing low wick to swing high wick",
+    "ote_zone": "70.5% to 88.6% retracement",
+    "limit_entry": "70.5% retracement level",
+    "sl_placement": "Below the swing low wick (100% Fibonacci level — not 88.6%)",
+    "tp": "Next structural target or opposing zone",
+    "minimum_rr": "1:2",
 
-  "notes": "Demo strategy for YouTube video. Runs 6 trades over 60 seconds, one every 10 seconds. Signal is simple price momentum on 1-min candles with RSI sanity check."
+    "confluence_checklist": {
+      "description": "Assess in this order before entry",
+      "step_1_location": "Price must be in discount (longs) or premium (shorts) on Daily. Equilibrium = no trade.",
+      "step_2_liquidity_sweep": {
+        "with_trend": "Liquidity sweep before impulse = odds enhancer only, not mandatory",
+        "counter_trend_or_anticipatory": "Liquidity sweep before impulse = MANDATORY. No sweep = no trade."
+      },
+      "step_3_bos_imbalance": "Break of Structure with imbalance (FVG) confirming the impulsive leg",
+      "step_4_retracement": "Price retraces to 70.5% of the impulsive leg for limit entry"
+    },
+
+    "setup_grades": {
+      "absolute_best": "Small Brother (4H S&D zone) located anywhere within 70.5%-88.6% OTE range + all 4 checklist items confirmed",
+      "A_plus": "All 4 checklist items confirmed + FVG near entry (no Small Brother present)",
+      "A": "With trend + BOS + OTE retracement (no sweep, no Small Brother, no FVG)",
+      "no_trade": "Counter trend or anticipatory without liquidity sweep before impulse"
+    },
+
+    "big_brother_small_brother": {
+      "big_brother": "Daily S&D zone providing HTF directional context for the OTE entry",
+      "small_brother": "4H S&D zone that must fall anywhere within the 70.5%-88.6% OTE retracement range to qualify as confluence",
+      "rule": "Small Brother alone without OTE is not a valid entry. Small Brother must be within the OTE zone to count."
+    }
+  },
+
+  "framework_2_HTF_SD_entry": {
+    "description": "Standard HTF Supply and Demand zone entry. Separate from OTE entry.",
+    "entry": "Proximal line of zone (preferred version)",
+    "sl_placement": "Distal line of zone + 33% buffer",
+    "minimum_rr": "1:2",
+
+    "zone_formation": {
+      "structure": "Every zone consists of three parts: Leg-In, Base, Leg-Out",
+      "identification_order": "Step 1: Identify leg-out first. Step 2: Identify leg-in. Step 3: Identify the base between them.",
+
+      "leg_in": {
+        "definition": "Price action prior to the base",
+        "candle_requirement": "Must be made of a decisive or explosive candle",
+        "direction": "Can be a rally or a drop"
+      },
+
+      "base": {
+        "definition": "Consolidation between leg-in and leg-out — where unfilled orders sit",
+        "candle_requirement": "One or multiple indecisive candles"
+      },
+
+      "leg_out": {
+        "LTF_4H": {
+          "option_1": "Single explosive candle (body > 70% of range, abnormally bigger than surrounding candles)",
+          "option_2": "Decisive candle (abnormally bigger) followed by at least one more decisive or explosive candle"
+        },
+        "HTF_Daily": {
+          "requirement": "Decisive candle that is abnormally bigger than surrounding candles"
+        }
+      }
+    },
+
+    "valid_formations": {
+      "demand": {
+        "DBR": "Drop-Base-Rally — U-shape. Price drops in, bases, rallies explosively out.",
+        "RBR": "Rally-Base-Rally — Price rallies in, bases, rallies explosively out."
+      },
+      "supply": {
+        "RBD": "Rally-Base-Drop — Inverted U-shape. Price rallies in, bases, drops explosively out.",
+        "DBD": "Drop-Base-Drop — Price drops in, bases, drops explosively out."
+      }
+    },
+
+    "line_placement_preferred_version": {
+      "DBR_demand": {
+        "proximal": "Highest body of base candles",
+        "distal": "Lowest wick of entire formation"
+      },
+      "RBR_demand": {
+        "proximal": "Highest body of base candles",
+        "distal": "Lowest wick of base and leg-out combined"
+      },
+      "RBD_supply": {
+        "proximal": "Lowest body of base candles",
+        "distal": "Highest wick of entire formation"
+      },
+      "DBD_supply": {
+        "proximal": "Lowest body of base candles",
+        "distal": "Highest wick of base and leg-out combined"
+      }
+    },
+
+    "zone_qualifiers": {
+      "description": "ALL qualifiers must be met. This is a hard filter — not a scoring system. One fail = no trade.",
+
+      "1_departure": {
+        "LTF_4H": {
+          "great": "Single explosive candle leg-out",
+          "acceptable": "Decisive candle (abnormally bigger) followed by at least one more decisive or explosive candle",
+          "not_acceptable": "Weak or gradual leg-out with multiple small candles — disqualified"
+        },
+        "HTF_Daily": {
+          "acceptable": "Decisive candle that is abnormally bigger than surrounding candles"
+        }
+      },
+
+      "2_base_duration": {
+        "great": "1-3 indecisive candles in base",
+        "acceptable": "4-5 indecisive candles in base",
+        "not_acceptable": "6 or more indecisive candles — disqualified",
+        "speed_bump_rule": "Single candle base appearing mid-trend during strong momentum = speed bump = fake zone = disqualified. Look further left for the true origin zone."
+      },
+
+      "3_freshness": {
+        "LTF_4H": {
+          "great": "Zone has never been tested — completely fresh",
+          "acceptable": "Zone has been tested once (1st touch)",
+          "not_acceptable": "Zone tested twice or more — disqualified"
+        },
+        "HTF_Daily": {
+          "rule": "Can be tested approximately 25% into the zone based on preferred version and still qualify as fresh"
+        }
+      },
+
+      "4_originality": {
+        "definition": "Look LEFT of the zone — is this zone an original institutional imbalance or a reaction to another zone?",
+        "original": "Zone was NOT caused by a reaction to another zone to its left — passes originality",
+        "non_original": "Zone was caused by a bounce or reaction from another zone to its left — lower quality, flag and avoid",
+        "flip_zone": {
+          "definition": "New demand formed in area of original supply, or new supply formed in area of original demand",
+          "quality": "Flip zones are usually original and tend to be stronger than regular original zones — one force clearly in control",
+          "priority": "Highest priority zone type when also fresh and in correct location"
+        }
+      },
+
+      "5_profit_margin": {
+        "description": "Look RIGHT of the zone — is there enough room to target?",
+        "measured_on": "Preferred version line placement",
+        "great": "R:R 1:5 or better",
+        "acceptable": "R:R 1:3 or better",
+        "not_acceptable": "R:R less than 1:2 — disqualified regardless of zone quality",
+        "rule": "Check what is between entry and target — opposing zones or structure that block the path disqualify the profit margin"
+      },
+
+      "6_arrival": {
+        "counter_trend_and_sideways": {
+          "requirement": "Steep or very steep arrival into zone — decisive or explosive candles approaching the zone with no opposing zones created during the move",
+          "reason": "Ensures profit margin above 1:2"
+        },
+        "with_trend": "Do not look at arrival — trend momentum provides sufficient context"
+      }
+    },
+
+    "LOL_level_on_top_of_level": {
+      "definition": "Two zones on the same timeframe stacked close together",
+      "qualification_rule": "The empty gap between the two zones must be SMALLER than the size of either zone — if gap is larger they are just two separate zones",
+      "entry": "100% position at proximal line of wider version of the lower zone",
+      "sl": "Distal of lower zone + 33% buffer",
+      "result": "Highest R:R but lowest odds of getting filled — accept the fill risk for better R:R"
+    }
+  },
+
+  "risk_rules": {
+    "risk_per_trade": "1% of account per trade",
+    "minimum_rr": "1:2 for all trade types",
+    "max_open_positions": 2,
+    "daily_stop_rule": "Stop trading after 2 consecutive losing trades",
+    "sl_by_entry_type": {
+      "OTE_entry": "Below swing low wick (100% Fibonacci level)",
+      "HTF_SD_entry": "Distal line of zone + 33% buffer",
+      "LOL_entry": "Distal of lower zone + 33% buffer"
+    }
+  },
+
+  "indicator_tags": {
+    "description": "S&D Pro indicator plots zones automatically on TradingView. Claude Code can read these tags directly and must prioritize them over structural approximations.",
+    "tags": {
+      "timeframe": "Timeframe of the zone — Daily or 4H",
+      "formation": "Zone formation type — RBD, RBR, DBR, DBD",
+      "F": "Flip zone — new demand in area of original supply or new supply in area of original demand. NOT freshness.",
+      "O": "Original zone — not caused by a reaction to another zone to its left",
+      "LoL": "Level on Top of Level — two zones stacked with gap smaller than either zone"
+    },
+    "freshness": "Cannot be confirmed by indicator — trader must verify visually. Claude Code must flag freshness as UNCONFIRMED and instruct trader to verify before entry.",
+    "fallback": "If indicator returns no data, fall back to structural price analysis and flag as approximate."
+  },
+
+  "notes": "Two separate frameworks must never be mixed. OTE entry uses Fibonacci retracement (70.5-88.6%) of last impulsive leg wick to wick, with confluence checklist: location, liquidity sweep, BOS + imbalance, and 70.5% limit entry. Small Brother within OTE zone and FVG near entry are optional confluences that upgrade setup grade. HTF S&D entry uses zone qualifiers and action matrix, with Big Brother (Daily zone) and Small Brother (4H zone) as the primary confluence — Daily provides HTF context, 4H is the entry timeframe. Both frameworks require Location and Direction assessment on Daily first."
 }
