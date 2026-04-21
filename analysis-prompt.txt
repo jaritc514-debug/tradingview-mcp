@@ -63,9 +63,10 @@ OTE Trade Parameters:
 - Status: Active now / Approaching / Not yet in zone
 
 Proximity Alert (auto-set after analysis):
-- If setup exists: set one TradingView alert using alert_create at entry − 1 ATR (shorts) or entry + 1 ATR (longs) — this is the "go set limit on MT5" signal
-- If price is already within 1 ATR of entry at time of analysis: skip proximity alert, state "Set limit now — price within 1 ATR of entry"
-- Alert name format: "[PAIR] OTE [LONG/SHORT] — Set limit on MT5"
+- SHORT setup: alert at entry − 1 ATR, condition: greater_than (price rallies up to this level before reaching entry)
+- LONG setup: alert at entry + 1 ATR, condition: less_than (price drops down to this level before reaching entry)
+- If price is already within 1 ATR of entry at time of analysis: skip alert, state "Set limit now — price within 1 ATR of entry"
+- Alert message format: "[PAIR] OTE [LONG/SHORT] — Set limit on MT5"
 
 Path-to-TP (4H opposing zones between entry and TP):
 - Fresh (purple) zone in path: ⚠️ WARNING — state zone level, note TP adjustment if R:R still viable
