@@ -26,7 +26,7 @@
 
   "location_analysis": {
     "timeframe": "Daily",
-    "method": "Measure swing high wick to swing low wick on Daily, divide into 3 equal sections",
+    "method": "Switch to Daily, read H1/H2/H3 and L1/L2/L3 from PxD Toolkit pivot table. Identify the most recent impulsive leg that contains current price — use the H and L of that SAME leg (they must come from the same move, not different legs). Position = (current price − leg low) / (leg high − leg low). Divide into 3 equal sections.",
     "zones": {
       "discount": "0% to 33% — look for longs only",
       "equilibrium": "33% to 66% — NO TRADE regardless of direction",
@@ -37,7 +37,7 @@
 
   "direction_analysis": {
     "timeframe": "Daily",
-    "method": "Identify 6 recent pivots (3 highs + 3 lows) from current price backwards",
+    "method": "Read H1/H2/H3 (highs) and L1/L2/L3 (lows) labels directly from PxD Toolkit pivot table. Labels: HH = Higher High, LH = Lower High, HL = Higher Low, LL = Lower Low.",
     "uptrend": {
       "required": "Minimum 2 x Higher Lows (HL)",
       "note": "Higher Highs not necessarily required — HL sequence is the key signal"
@@ -99,8 +99,9 @@
     "fibonacci_measurement": "Wick to wick — swing low wick to swing high wick",
     "ote_zone": "70.5% to 88.6% retracement",
     "limit_entry": "70.5% retracement level",
-    "sl_placement": "Below the swing low wick (100% Fibonacci level — not 88.6%)",
-    "tp": "Next structural target or opposing zone",
+    "sl_placement": "100% Fibonacci level + 10% of 4H ATR as buffer. For longs: swing low wick − (ATR × 0.10). For shorts: swing high wick + (ATR × 0.10).",
+    "tp1": "0% Fibonacci level — swing low for shorts, swing high for longs",
+      "tp2": "Next opposing 4H S&D zone beyond TP1",
     "minimum_rr": "1:2",
 
     "confluence_checklist": {
@@ -110,7 +111,7 @@
         "with_trend": "Liquidity sweep before impulse = odds enhancer only, not mandatory",
         "counter_trend_or_anticipatory": "Liquidity sweep before impulse = MANDATORY. No sweep = no trade."
       },
-      "step_3_bos_imbalance": "Break of Structure with imbalance (FVG) confirming the impulsive leg",
+      "step_3_bos_imbalance": "Break of Structure with imbalance (FVG) confirming the impulsive leg. Calculate FVGs from OHLCV bars: bullish FVG = bar[i].low > bar[i-2].high (zone: bar[i-2].high to bar[i].low), bearish FVG = bar[i].high < bar[i-2].low (zone: bar[i].high to bar[i-2].low). Do NOT use pine boxes — they return 2dp precision only.",
       "step_4_retracement": "Price retraces to 70.5% of the impulsive leg for limit entry"
     },
 
@@ -212,8 +213,9 @@
       },
 
       "3_freshness": {
+        "detection": "Read box color via data_get_pine_boxes(verbose=true) on Supply & Demand Pro. borderColor 1083317041 = Purple = Fresh. borderColor 1082555256 = Grey = Touched.",
         "LTF_4H": {
-          "great": "Zone has never been tested — completely fresh",
+          "great": "Zone has never been tested — completely fresh (Purple)",
           "acceptable": "Zone has been tested once (1st touch)",
           "not_acceptable": "Zone tested twice or more — disqualified"
         },
@@ -266,7 +268,7 @@
     "max_open_positions": 2,
     "daily_stop_rule": "Stop trading after 2 consecutive losing trades",
     "sl_by_entry_type": {
-      "OTE_entry": "Below swing low wick (100% Fibonacci level)",
+      "OTE_entry": "100% Fibonacci level + 10% of 4H ATR. Longs: swing low wick − (ATR × 0.10). Shorts: swing high wick + (ATR × 0.10).",
       "HTF_SD_entry": "Distal line of zone + 33% buffer",
       "LOL_entry": "Distal of lower zone + 33% buffer"
     }
@@ -281,7 +283,7 @@
       "O": "Original zone — not caused by a reaction to another zone to its left",
       "LoL": "Level on Top of Level — two zones stacked with gap smaller than either zone"
     },
-    "freshness": "Cannot be confirmed by indicator — trader must verify visually. Claude Code must flag freshness as UNCONFIRMED and instruct trader to verify before entry.",
+    "freshness": "Confirmed via box color from data_get_pine_boxes (verbose=true) on Supply & Demand Pro indicator. borderColor 1083317041 = Purple = Fresh (untouched). borderColor 1082555256 = Grey = Touched. borderColor null = historical zone, status unknown. No longer requires visual verification.",
     "fallback": "If indicator returns no data, fall back to structural price analysis and flag as approximate."
   },
 

@@ -1,0 +1,54 @@
+Run the prefilter across all FX pairs in the OTE x PxD watchlist.
+
+Pairs to scan (in this order):
+AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY,
+AUDJPY, AUDNZD, CADCHF, CADJPY, CHFJPY, EURCAD, EURCHF,
+EURGBP, EURJPY, GBPCAD, GBPCHF, GBPJPY, NZDJPY
+
+Skip: DXY, XAUUSD, NQ1!, ES1!, YM1!, GER40
+
+---
+
+For each pair, in sequence:
+1. chart_set_symbol → switch to the pair
+2. chart_set_timeframe → Daily
+3. quote_get → current price
+4. data_get_pine_tables(study_filter="PxD Toolkit") → read H1/H2/H3 and L1/L2/L3
+
+Then calculate:
+
+STEP 1 — LOCATION:
+- Identify the most recent impulsive leg containing current price (H and L from the same leg)
+- Position = (current price − leg low) / (leg high − leg low)
+- Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
+- If Equilibrium: NO TRADE — stop, move to next pair
+
+STEP 2 — DIRECTION:
+- Read H1/H2/H3 and L1/L2/L3 labels from pivot table
+- Uptrend: minimum 2x HL | Downtrend: minimum 2x LH | Sideways: no clear sequence
+- If Sideways: NO TRADE — stop, move to next pair
+
+STEP 3 — ACTION MATRIX:
+- Long valid: Discount + Uptrend or Sideways
+- Short valid: Premium + Downtrend or Sideways
+- No Action: everything else
+
+---
+
+OUTPUT FORMAT:
+Print a single ranked table after ALL pairs are scanned. Do not print results mid-scan.
+Sort order: SHORT VALID first → LONG VALID second → NO ACTION third → NO TRADE last.
+
+One line per pair:
+[PAIR] | [Location %] | [Direction] | [Verdict]
+
+Example:
+NZDUSD | Premium 81% | Downtrend | SHORT VALID ✓
+AUDUSD | Discount 28% | Uptrend   | LONG VALID ✓
+EURUSD | Equilibrium  | —         | NO TRADE
+USDJPY | Discount 22% | Downtrend | NO ACTION
+
+After the table, state:
+- Total pairs scanned
+- How many are actionable (SHORT VALID or LONG VALID)
+- Which pairs to prioritise for full analysis (top 1-2 from each direction)
