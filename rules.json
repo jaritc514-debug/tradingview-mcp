@@ -99,6 +99,10 @@
     "fibonacci_measurement": "Wick to wick — swing low wick to swing high wick",
     "ote_zone": "70.5% to 88.6% retracement",
     "limit_entry": "70.5% retracement level",
+    "entry_formula": {
+      "short": "Entry = swing_low + 0.705 × (swing_high − swing_low). Fib drawn from swing HIGH down to swing LOW. 0% = swing low (TP1), 100% = swing high (SL area). Entry is at the 70.5% level counting UP from the swing low.",
+      "long": "Entry = swing_high − 0.705 × (swing_high − swing_low). Fib drawn from swing LOW up to swing HIGH. 0% = swing high (TP1), 100% = swing low (SL area). Entry is at the 70.5% level counting DOWN from the swing high."
+    },
     "sl_placement": "100% Fibonacci level + 10% of 4H ATR as buffer. For longs: swing low wick − (ATR × 0.10). For shorts: swing high wick + (ATR × 0.10).",
     "tp1": "0% Fibonacci level — swing low for shorts, swing high for longs",
       "tp2": "Next opposing 4H S&D zone beyond TP1",
