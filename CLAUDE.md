@@ -127,3 +127,16 @@ Claude Code ←→ MCP Server (stdio) ←→ CDP (localhost:9222) ←→ Trading
 ```
 
 Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines').get(false)._primitivesDataById`
+
+## Current Status
+Last updated: 2026-04-21
+
+### What was done
+- Set up Git workflow for session continuity
+- Confirmed CLAUDE.md exists and is being used for context
+
+### Next steps
+- Continue TradingView MCP development
+
+### Open questions / decisions pending
+- None currently
