@@ -269,8 +269,8 @@
   "risk_rules": {
     "risk_per_trade": "1% of account per trade",
     "minimum_rr": "1:2 for all trade types",
-    "max_open_positions": 2,
-    "daily_stop_rule": "Stop trading after 2 consecutive losing trades",
+    "max_open_positions": "No fixed limit — trades can be entered on different days and run concurrently. Practical ceiling is ~4 open at once based on setup frequency across 20 pairs.",
+    "daily_stop_rule": "Stop trading after 2 consecutive losing trades on the same day, OR when FTMO daily drawdown limit is reached — whichever comes first.",
     "sl_by_entry_type": {
       "OTE_entry": "100% Fibonacci level + 10% of 4H ATR. Longs: swing low wick − (ATR × 0.10). Shorts: swing high wick + (ATR × 0.10).",
       "HTF_SD_entry": "Distal line of zone + 33% buffer",

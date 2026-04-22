@@ -1,0 +1,59 @@
+I am going to paste my trade journal data below. Analyze it and produce my weekly performance review.
+
+Use my rules from rules.json for context on what constitutes a valid trade, correct grading, and risk rules.
+
+[PASTE YOUR EXPORTED JSON HERE]
+
+---
+
+Produce the weekly review in this exact order:
+
+WEEKLY PERFORMANCE SUMMARY
+- Date range covered
+- Total trades | Wins | Losses | Breakeven | Not Triggered
+- Win rate
+- Total P&L
+- Average R per trade
+- Best trade | Worst trade
+
+GRADE PERFORMANCE
+- Break down win rate and average P&L by grade (A, B, C, D)
+- Are higher grades outperforming lower grades? If not, flag it and explain why this is a problem.
+
+FRAMEWORK PERFORMANCE
+- OTE vs HTF S&D — which is performing better?
+- Any patterns worth noting?
+
+PAIR PERFORMANCE
+- Which pairs are winning vs losing?
+- Any pair consistently underperforming? Flag it.
+
+DIRECTION BIAS
+- Long vs Short performance this week
+- Does this align or conflict with the broader market context?
+
+COT ALIGNMENT CHECK
+- Trades where COT was Conflicting — did they underperform vs Aligned trades?
+- Recommendation: should conflicting COT be a hard filter or just a flag?
+
+DISCIPLINE CHECK
+- Any mistakes logged? List them and how much they cost
+- Any trades taken outside rules (EQ zone, wrong bias, below minimum R:R)?
+- Followed the plan rate — what % of trades were "Yes fully"?
+
+EMOTIONAL PATTERNS
+- Most common emotion before trades
+- Did emotional state correlate with outcome? (e.g. anxious trades = losses?)
+- Any patterns worth addressing?
+
+WHAT'S WORKING
+- 2-3 specific things the data shows are working well
+
+WHAT NEEDS TO IMPROVE
+- 2-3 specific things the data shows need to change — be direct, no sugarcoating
+
+NEXT WEEK FOCUS
+- 1-2 concrete actionable things to focus on based on this week's data
+
+---
+Be direct. If the data shows a problem, call it out clearly. Do not pad the review with positives if the numbers don't support it. The goal is improvement, not validation.

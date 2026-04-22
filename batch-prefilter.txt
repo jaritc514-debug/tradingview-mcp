@@ -51,4 +51,17 @@ USDJPY | Discount 22% | Downtrend | NO ACTION
 After the table, state:
 - Total pairs scanned
 - How many are actionable (SHORT VALID or LONG VALID)
-- Which pairs to prioritise for full analysis (top 1-2 from each direction)
+
+Then output a READY TO ANALYZE block at the bottom formatted exactly like this:
+
+---
+READY TO ANALYZE — copy and paste when ready:
+
+"Run analysis-prompt.txt on [PAIR1], then [PAIR2], then [PAIR3] in sequence. Do not switch symbols between analyses unless instructed."
+---
+
+Rules for building this command:
+- Include ALL SHORT VALID and LONG VALID pairs from the table — do not filter or cap
+- Order: SHORT VALID pairs first, then LONG VALID pairs
+- If no actionable pairs exist, state: "No actionable pairs this session — no analysis needed."
+- Do not include NO ACTION or NO TRADE pairs
