@@ -1,130 +1,158 @@
-Analyze the symbol currently open on my TradingView chart. Do not switch symbols.
-Act as a senior analyst using my two separate frameworks defined in rules.json: OTE Entry and HTF S&D Entry.
+FULL ANALYSIS — PxD Trading System
+=====================================
+Run this on a pair that has already passed the prefilter (VALID or CAUTION verdict).
+You are looking for a 4H entry setup: BOS or MSS → OTE (70.5% retracement) → FVG at entry.
 
-OUTPUT STYLE: Be concise. State results and levels directly. Do not show intermediate math, bar references, box IDs, or color codes in the output. No sources section. One clear sentence per finding.
-
-Analyze in this order:
-
----
-
-STEP 1: LOCATION (Daily)
-- Switch chart to Daily first, then read H1/H2/H3 and L1/L2/L3 from the PxD Toolkit pivot table (data_get_pine_tables)
-- Identify the most recent impulsive leg that contains current price — use the H and L of that same leg (must come from the same move, not different legs)
-- Position = (current price − leg low) / (leg high − leg low)
-- Divide into 3 equal sections
-- State: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%) and the percentage
-- If Equilibrium: state NO TRADE and stop analysis
-- If Discount: bias is LONG only
-- If Premium: bias is SHORT only
+Output style: summary card first, full detail below. Concise — one clear sentence per finding.
 
 ---
 
-STEP 2: DIRECTION (Daily)
-- Read H1/H2/H3 and L1/L2/L3 labels directly from PxD Toolkit pivot table (already on Daily from Step 1)
-- Labels: HH = Higher High, LH = Lower High, HL = Higher Low, LL = Lower Low
-- Uptrend: minimum 2 x HL in lows sequence (HH not required)
-- Downtrend: minimum 2 x LH in highs sequence (LL not required)
-- Sideways: no clear sequence — state NO TRADE and stop analysis
-- Anticipatory: 3-4 pivots pointing to next HL or LH — flag as lower conviction
-- State: Uptrend / Downtrend / Sideways / Anticipatory
+STEP 1 — CONFIRM BIAS (Daily)
+- chart_set_timeframe → Daily
+- data_get_pine_tables(study_filter="Trend Direction Pro") → read 1D and 1W rows
+- Record: Daily Trend / Status / Strength | Weekly Trend / Status / Strength
+- If Daily Trend is unclear or indicator not readable: take capture_screenshot and read visually
+- Daily trend = your bias. If no clear trend: state NO TRADE and stop.
 
 ---
 
-STEP 3: ACTION MATRIX CHECK
-- Cross reference Location + Direction using action matrix from rules.json:
-  * Long valid: Discount + Uptrend or Sideways
-  * Short valid: Premium + Downtrend or Sideways
-  * No Action: everything else — including Discount + Downtrend and Premium + Uptrend
-- State: Long valid / Short valid / No Action
-- If No Action: stop analysis
+STEP 2 — CONFIRM LOCATION (Daily)
+- Stay on Daily
+Call both in parallel:
+- data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → all swing labels with bar_index
+- quote_get → current price
+
+Sort all labels by bar_index DESCENDING (highest bar_index = most recent)
+Swing low = most recent HL or LL label (highest bar_index among HL/LL labels)
+Swing high = most recent HH or LH label with bar_index HIGHER than the swing low's bar_index
+  → If none exists: swing high UNCONFIRMED
+
+State the swing low price and source label (e.g. "HL @ 0.77954, bar 911")
+
+If swing high confirmed:
+  Location % = (price − swing low) / (swing high − swing low) × 100
+  Discount (below 50%) = correct for buys | Premium (above 50%) = correct for sells
+  Equilibrium (~50%): note but do NOT stop — location is a tag, not a filter
+
+If swing high unconfirmed:
+  Within 1 ATR above swing low → Discount (provisional)
+  1–3 ATR above → Premium (provisional)
+  More than 3 ATR above → Extreme Premium (provisional)
+  State: "Swing high unconfirmed — location provisional, will shift as high develops"
+
+Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium
 
 ---
 
-STEP 4A: OTE FRAMEWORK CHECK
-- Switch to 4H, identify the last impulsive leg (wick to wick)
-- State swing high and swing low levels
-- Calculate and state: 70.5% level (entry), 88.6% level (zone top), SL (swing wick + 10% of 4H ATR)
-- Calculate 4H ATR from recent bars
+STEP 3 — SWITCH TO 4H — FIND BOS OR MSS
+- chart_set_timeframe → 4H
+- data_get_pine_labels(study_filter="PxD Toolkit") → read structure labels
+- Look for the most recent BOS or MSS in the direction of the Daily bias
+  * BOS = break of structure (with-trend continuation)
+  * MSS = market structure shift (early reversal signal — higher risk, higher reward)
+- State: BOS confirmed / MSS confirmed / Neither found (no setup)
+- If neither: state NO SETUP and stop analysis
 
-OTE Confluence (assess all 4, state each as confirmed/not confirmed in one line):
-1. Location — confirmed from Step 1
-2. Liquidity sweep before impulse — present or absent (with-trend: odds enhancer / counter-trend: mandatory)
-3. BOS confirmed + FVG present — calculate FVG from OHLCV bars (bullish: bar[i].low > bar[i-2].high / bearish: bar[i].high < bar[i-2].low) — state FVG price range only, no math shown
-4. Price retracing toward 70.5% — in zone / approaching / not yet
-
-OTE Grade:
-- Absolute best: Small Brother (4H S&D zone) within OTE zone + all 4 confirmed
-- A+: All 4 confirmed + FVG near entry
-- A: With trend + BOS + retracing to OTE (no sweep/Small Brother/FVG)
-- No trade: Counter trend or anticipatory without sweep
-
-OTE Trade Parameters:
-- Entry | SL | TP1 (0% Fib level — swing low for shorts / swing high for longs) | TP2 (next opposing 4H S&D zone beyond TP1) | R:R to TP1 and R:R to TP2
-- Status: Active now / Approaching / Not yet in zone
-
-Proximity Alert (auto-set after analysis):
-- SHORT setup: alert at entry − 1 ATR, condition: greater_than (price rallies up to this level before reaching entry)
-- LONG setup: alert at entry + 1 ATR, condition: less_than (price drops down to this level before reaching entry)
-- If price is already within 1 ATR of entry at time of analysis: skip alert, state "Set limit now — price within 1 ATR of entry"
-- Alert message format: "[PAIR] OTE [LONG/SHORT] — Set limit on MT5"
-
-Path-to-TP (4H opposing zones between entry and TP):
-- Fresh (purple) zone in path: ⚠️ WARNING — state zone level, note TP adjustment if R:R still viable
-- Grey (touched) zone in path: NOTED — not a blocker
-- No zone in path: Path clear
+Note on MSS: if MSS is present but a subsequent BOS has already confirmed → the MSS entry is invalidated, use BOS entry parameters only.
 
 ---
 
-STEP 4B: HTF S&D FRAMEWORK CHECK
-- Read zones: data_get_pine_labels(study_filter="Supply & Demand Pro", max_labels=200) for tags, data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) for freshness
-- Freshness from borderColor: 1083317041 = Purple = Fresh / 1082555256 = Grey = Touched / null = unknown
-- If no data returned: fall back to structural analysis, flag as approximate
-
-Identify nearest qualified Daily zone (Big Brother):
-- State zone: formation type, proximal, distal, freshness, tags (F/O/LoL)
-- State: Price is AT / approaching / away from zone
-
-OTE–S&D alignment:
-- OTE entry aligns with Daily zone → EXTRA CONFLUENCE
-- OTE entry sells into Daily demand or buys into Daily supply:
-  * Grey zone: flag as risk, reduced conviction
-  * Purple zone: DO NOT TAKE THE TRADE
-
-Small Brother: any 4H zone within or aligning with the Daily zone? State yes/no and levels.
-
-Zone Qualifiers:
-1. Departure: PASS — confirmed by indicator (S&D Pro only plots zones meeting departure criteria)
-2. Base Duration: PASS — confirmed by indicator (S&D Pro only plots zones meeting base duration criteria)
-3. Freshness: Purple = Fresh / Grey = Touched (from box color)
-4. Originality: O tag = confirmed / no tag = assess from structure
-5. Profit Margin: R:R from proximal to next opposing zone — minimum 1:3
-6. Arrival: counter-trend/sideways only — steep arrival required / with-trend = skip
-
-LOL Check: two zones stacked with gap smaller than either zone? If yes — entry at proximal of wider lower zone.
-
-HTF S&D Trade Parameters:
-- Entry | SL (distal + 33% buffer) | TP | R:R — state levels only
-- Status: Active now / Approaching / Away
+STEP 4 — CHECK LIQUIDITY SWEEP
+- Still on 4H
+- data_get_pine_labels(study_filter="PxD Toolkit") → filter for LQ labels
+- Was there a liquidity grab (LQ label) immediately BEFORE the BOS or MSS identified in Step 3?
+- Do not flag old LQ labels from unrelated prior structure
+- State: LQ present ✅ / LQ absent — noted (still valid, reduces conviction slightly)
 
 ---
 
-STEP 5: MACRO CONTEXT
-- Search web for latest news on current symbol + DXY + Fed/CPI impact
-- One sentence: Confirms / Conflicts / Neutral — and why
+STEP 5 — IDENTIFY THE DISPLACEMENT LEG
+- On 4H, identify the impulsive leg that created the BOS or MSS:
+  * For buys: bearish displacement leg that swept lows, then BOS/MSS to the upside
+  * For sells: bullish displacement leg that swept highs, then BOS/MSS to the downside
+- Read the high and low of this leg from capture_screenshot or data_get_pine_labels if available
+- For buys: Leg Low = confirmed origin (the low before the displacement). Leg High = most recent high printed — flag as UNCONFIRMED if price has not yet clearly reversed from it (may extend before retracing)
+- For sells: Leg High = confirmed origin (the high before the displacement). Leg Low = most recent low printed — flag as UNCONFIRMED if price has not clearly reversed yet
+- State: Leg High [price] (Confirmed / Unconfirmed) | Leg Low [price] (Confirmed / Unconfirmed)
+- Assess leg quality:
+  * Strong momentum candles: Yes / No
+  * Minimal mid-leg pullback: Yes / No
+  * Clear anchor high/low: Yes / No
+  * Dominant leg (stands out vs surrounding candles): Yes / No
 
 ---
 
-STEP 6: FINAL VERDICT
+STEP 6 — CALCULATE OTE ENTRY (70.5% RETRACEMENT)
+Using the displacement leg identified in Step 5:
 
-OTE Framework:
-- Setup: Yes / No | Grade: Absolute Best / A+ / A / No setup
-- Entry | SL | TP | R:R
-- Status: Active / Approaching / No setup
+For buys (price retracing down into the leg):
+  OTE entry = Leg High − 0.705 × (Leg High − Leg Low)
+  SL = Leg Low − (ATR × 0.10)
+  TP1 = Leg High (0% fib — origin of leg)
 
-HTF S&D Framework:
-- Setup: Yes / No | Grade: A / B / No setup
-- Entry | SL | TP | R:R
-- Status: Active / Approaching / No setup
+For sells (price retracing up into the leg):
+  OTE entry = Leg Low + 0.705 × (Leg High − Leg Low)
+  SL = Leg High + (ATR × 0.10)
+  TP1 = Leg Low (0% fib — origin of leg)
 
-Overall Bias: Bullish / Bearish / No trade
-What invalidates this analysis? (2-3 bullet points max)
+- data_get_pine_tables(study_filter="PxD Toolkit") → read ATR value
+- State: OTE entry / SL / TP1 / R:R
+- If Leg High or Leg Low is UNCONFIRMED: add note "Entry level may shift if [high/low] extends before retracing — monitor and adjust"
+- Minimum R:R = 1:2. If below 1:2: state INSUFFICIENT R:R — no trade
+
+---
+
+STEP 7 — CHECK FVG AT ENTRY
+- data_get_pine_boxes(study_filter="PxD Toolkit", verbose=true) → read imbalance boxes
+- Filter for boxes near the OTE entry level (within 1 ATR)
+- Is there an FVG (imbalance) present at or near the 70.5% entry?
+- State: FVG present [price range] ✅ / FVG absent ❌
+- FVG location: Above 50% of leg (sells) / Below 50% of leg (buys) / Fails filter
+- NOTE: Both BOS/MSS AND FVG at entry are required for a valid setup. If FVG absent: CAUTION — lower conviction, note it clearly.
+
+---
+
+STEP 8 — OVERALL CONFLUENCE SCORE
+Rate each factor — confirmed ✅ or not confirmed ❌:
+1. Daily location correct (Discount for buys / Premium for sells)
+2. Liquidity sweep before BOS/MSS
+3. BOS or MSS confirmed in bias direction
+4. FVG present at OTE entry level
+5. Weekly trend agrees with Daily bias
+
+Grade:
+- A: All 4 core factors confirmed (1–4) + weekly agrees
+- B: 3 of 4 core factors confirmed, or all 4 but weekly conflicts
+- C: 2 of 4 confirmed — take with caution
+- No setup: BOS/MSS absent, or FVG absent + LQ absent (less than 2 of 4)
+
+---
+
+STEP 9 — PROXIMITY & ALERT
+- quote_get → current price
+- Is price already within 1 ATR of OTE entry? → "Set limit now"
+- Is price approaching (1–3 ATR away)? → "Set proximity alert"
+- Is price far from entry? → "Monitor — not imminent"
+
+Alert to set:
+- Buy: alert at OTE entry + 1 ATR, condition: price crossing down
+- Sell: alert at OTE entry − 1 ATR, condition: price crossing up
+- Alert message: "[PAIR] PxD OTE [BUY/SELL] — approaching entry"
+
+---
+
+STEP 10 — FINAL OUTPUT
+
+── QUICK SUMMARY ──────────────────────────────
+[PAIR] | [BUY/SELL] | Grade: [A/B/C/No setup]
+Daily: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging]
+Weekly: [Bullish/Bearish] | [Agrees/Conflicts]
+Location: [Discount/Premium] (~[%])
+Structure: [BOS/MSS] | LQ sweep: [Yes/No]
+OTE Entry: [price] | SL: [price] | TP1: [price] | R:R: [x:x]
+FVG at entry: [Yes/No] [price range if yes]
+Status: [Set limit now / Approaching / Not imminent]
+
+── FULL DETAIL ────────────────────────────────
+[Expand each step above — one sentence per finding]
+[End with: What invalidates this setup? — 2–3 bullet points]

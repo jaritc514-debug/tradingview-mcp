@@ -1,67 +1,104 @@
-Run the prefilter across all FX pairs in the OTE x PxD watchlist.
+BATCH PREFILTER — PxD Trading System
+=====================================
+Scan all 20 pairs in the PxD watchlist using the prefilter criteria.
+Do NOT run full analysis. Do NOT calculate entry levels or fibs.
+Scan all pairs silently first, then print the full ranked table at once.
 
-Pairs to scan (in this order):
+PAIRS TO SCAN (in this order):
 AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY,
 AUDJPY, AUDNZD, CADCHF, CADJPY, CHFJPY, EURCAD, EURCHF,
 EURGBP, EURJPY, GBPCAD, GBPCHF, GBPJPY, NZDJPY
 
-Skip: DXY, XAUUSD, NQ1!, ES1!, YM1!, GER40
-
 ---
 
-For each pair, in sequence:
-1. chart_set_symbol → switch to the pair
+FOR EACH PAIR — run silently, no mid-scan output:
+
+1. chart_set_symbol → switch to pair
 2. chart_set_timeframe → Daily
-3. quote_get → current price
-4. data_get_pine_tables(study_filter="PxD Toolkit") → read H1/H2/H3 and L1/L2/L3
+3. data_get_pine_tables(study_filter="Trend Direction Pro") → read 1D and 1W rows
+   Record: Daily Trend / Status / Strength | Weekly Trend / Status / Strength
+   If table unreadable: capture_screenshot and read visually. If still unclear: flag as UNREADABLE.
 
-Then calculate:
+4. Call in parallel:
+   - data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → all swing labels with bar_index
+   - quote_get → current price
 
-STEP 1 — LOCATION:
-- Identify the most recent impulsive leg containing current price (H and L from the same leg)
-- Position = (current price − leg low) / (leg high − leg low)
-- Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
-- If Equilibrium: NO TRADE — stop, move to next pair
+   Sort all labels by bar_index DESCENDING (highest = most recent)
+   Swing low = most recent HL or LL (highest bar_index among HL/LL labels)
+   Swing high = most recent HH or LH with bar_index HIGHER than swing low's bar_index
+     → If none: swing high UNCONFIRMED
 
-STEP 2 — DIRECTION:
-- Read H1/H2/H3 and L1/L2/L3 labels from pivot table
-- Uptrend: minimum 2x HL | Downtrend: minimum 2x LH | Sideways: no clear sequence
-- If Sideways: NO TRADE — stop, move to next pair
+   If swing high confirmed:
+     Location % = (price − swing low) / (swing high − swing low) × 100
+   If swing high unconfirmed:
+     Within 1 ATR above swing low → Discount (provisional)
+     1–3 ATR above → Premium (provisional)
+     More than 3 ATR above → Extreme Premium (provisional)
 
-STEP 3 — ACTION MATRIX:
-- Long valid: Discount + Uptrend or Sideways
-- Short valid: Premium + Downtrend or Sideways
-- No Action: everything else
+   Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium
+
+5. data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → check for fresh zones
+   Fresh zones = bgColor 2133728284 or 2116951068 (dark blue)
+   Touched zones = bgColor 439234094 or null — ignore completely
+   Do NOT flag LQ labels as obstacles
+
+   For BUYS: flag OBSTACLE only if:
+     1. Current price is INSIDE a fresh Supply zone
+     2. A fresh Supply zone is within 1 ATR above current price
+   For SELLS: flag OBSTACLE only if:
+     1. Current price is INSIDE a fresh Demand zone
+     2. A fresh Demand zone is within 1 ATR below current price
+   Everything else = ignore, do not mention
+   Path clear = Yes / Obstacle — [inside / immediately above|below] fresh [Supply/Demand] zone at [price range]
+
+6. Apply VERDICT:
+   ✅ VALID    — Daily has a clear Bullish or Bearish trend AND price is in the correct location for that bias
+   ⚠️ CAUTION — Price in Equilibrium (~50%), OR obstacle directly in path, OR trend direction weak/unclear
+   ❌ SKIP     — Trend Direction Pro table unreadable OR Daily shows no discernible trend direction at all
+
+   IMPORTANT: Confirmed/Unconfirmed and Ranging/Trending are TAGS only — they never change the verdict.
+   All setups are taken regardless. These tags are logged for data collection purposes only.
 
 ---
 
-OUTPUT FORMAT:
-Print a single ranked table after ALL pairs are scanned. Do not print results mid-scan.
-Sort order: SHORT VALID first → LONG VALID second → NO ACTION third → NO TRADE last.
+OUTPUT — print after ALL 20 pairs are scanned:
 
-One line per pair:
-[PAIR] | [Location %] | [Direction] | [Verdict]
+SORT ORDER:
+1. VALID ✅ — Confirmed Trending (buy candidates: lowest location % first | sell candidates: highest % first)
+2. VALID ✅ — Confirmed Ranging or Unconfirmed Trending
+3. CAUTION ⚠️
+4. SKIP ❌ — sorted by reason
+5. UNREADABLE — always last, separated by divider
 
-Example:
-NZDUSD | Premium 81% | Downtrend | SHORT VALID ✓
-AUDUSD | Discount 28% | Uptrend   | LONG VALID ✓
-EURUSD | Equilibrium  | —         | NO TRADE
-USDJPY | Discount 22% | Downtrend | NO ACTION
+TABLE FORMAT (one line per pair):
+[PAIR] | [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging] | [Weekly agrees/conflicts] | [Location %] | [VERDICT]
 
-After the table, state:
-- Total pairs scanned
-- How many are actionable (SHORT VALID or LONG VALID)
-
-Then output a READY TO ANALYZE block at the bottom formatted exactly like this:
+─────────────────────────────────────────────────────────────────────
+⚠ UNREADABLE — verify manually before any analysis
+[PAIR] | Trend unreadable / Location unclear | SKIP until verified
+─────────────────────────────────────────────────────────────────────
 
 ---
-READY TO ANALYZE — copy and paste when ready:
 
-"Run analysis-prompt.txt on [PAIR1], then [PAIR2], then [PAIR3] in sequence. Do not switch symbols between analyses unless instructed."
+SUMMARY (print after table):
+
+── SCAN SUMMARY ──────────────────────────────────────────────
+Total scanned: 20
+VALID: X pairs | CAUTION: X pairs | SKIP: X pairs | UNREADABLE: X pairs
+Buys shortlisted: [list] | Sells shortlisted: [list]
+
+── EQ WATCHLIST — PAIRS NEAR 50% ────────────────────────────
+For any pair in Equilibrium zone (45–55%): list it here with an alert suggestion.
+Format: [PAIR] | [Daily trend] | [Current %] | Alert at [price] when price reaches [40% for buys / 60% for sells]
+If none: "No pairs in EQ this session"
+
+── READY TO ANALYZE ──────────────────────────────────────────
+List all VALID and CAUTION pairs only, sorted by conviction.
+Confirmed Trending first, then Confirmed Ranging, then Unconfirmed.
+Within each group: sells sorted highest location % first, buys sorted lowest % first.
+
+Print this exact copyable command at the end:
 ---
-
-Rules for building this command:
-- Include ALL SHORT VALID and LONG VALID pairs from the table — do not filter or cap
-- Order: SHORT VALID pairs first, then LONG VALID pairs
-- If no actionable pairs exist, state: "No actionable pairs this session — no analysis needed."
-- Do not include NO ACTION or NO TRADE pairs
+"Run analysis-prompt.txt on [PAIR1], then [PAIR2], then [PAIR3]. Do not switch symbols between analyses unless instructed."
+---
+If no actionable pairs: "No actionable pairs this session."

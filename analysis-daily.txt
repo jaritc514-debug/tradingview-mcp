@@ -1,0 +1,70 @@
+DAILY ANALYSIS — PxD Trading System
+=====================================
+Run this on the DAILY tab (PxD Toolkit period 12).
+Confirms bias and location only. If result is PROCEED, switch to your 4H tab and run analysis-4h.txt.
+
+---
+
+STEP 1 — CONFIRM BIAS (Daily)
+- chart_set_timeframe → Daily
+- data_get_pine_tables(study_filter="Trend Direction Pro") → read 1D and 1W rows
+- Record: Daily Trend / Status / Strength | Weekly Trend / Status / Strength
+- If Daily Trend unclear: capture_screenshot and read visually
+- If no clear trend: output NO TRADE and stop
+
+---
+
+STEP 2 — CONFIRM LOCATION (Daily)
+- Stay on Daily
+Call both in parallel:
+- data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → all swing labels with bar_index
+- quote_get → current price
+
+Sort all labels by bar_index DESCENDING (highest bar_index = most recent)
+Swing low = most recent HL or LL label (highest bar_index among HL/LL labels)
+Swing high = most recent HH or LH label with bar_index HIGHER than the swing low's bar_index
+  → If none exists: swing high UNCONFIRMED
+
+State the swing low price and source label (e.g. "HL @ 198.24, bar 1049")
+
+If swing high confirmed:
+  Location % = (price − swing low) / (swing high − swing low) × 100
+  Discount (below 50%) = correct for buys | Premium (above 50%) = correct for sells
+  Equilibrium (~50%): note but do NOT stop — location is a tag, not a filter
+
+If swing high unconfirmed:
+  Within 1 ATR above swing low → Discount (provisional)
+  1–3 ATR above → Premium (provisional)
+  More than 3 ATR above → Extreme Premium (provisional)
+  State: "Swing high unconfirmed — location provisional"
+
+Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium
+
+---
+
+STEP 3 — CHECK PATH IS CLEAR (Daily)
+- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → read S&D zones
+- Fresh zones = bgColor 2133728284 or 2116951068 (dark blue)
+- Touched zones = bgColor 439234094 or null — IGNORE completely
+- data_get_pine_tables(study_filter="PxD Toolkit") → read ATR value
+
+For BUYS: flag OBSTACLE only if fresh Supply zone is inside or within 1 ATR above current price
+For SELLS: flag OBSTACLE only if fresh Demand zone is inside or within 1 ATR below current price
+Everything else = ignore
+
+---
+
+OUTPUT:
+
+PAIR: [pair] | [BUY/SELL bias]
+Daily: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging]
+Weekly: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging] | [Agrees/Conflicts]
+Swing low: [label type] @ [price], bar [x]
+Swing high: [label type] @ [price], bar [x] / UNCONFIRMED
+Location: [Discount/Premium/Equilibrium/Extreme Premium] ([%])
+Path: [Clear / Obstacle — [details]]
+
+RESULT: PROCEED ✅ / WAIT ⚠️ / NO TRADE ❌
+Reason: [one line]
+
+→ If PROCEED: switch to your 4H TradingView tab, then run analysis-4h.txt on [pair]

@@ -27,7 +27,9 @@
       "mcp__tradingview__ui_evaluate",
       "mcp__tradingview__data_get_indicator",
       "mcp__tradingview__indicator_set_inputs",
-      "mcp__tradingview__watchlist_get"
+      "mcp__tradingview__watchlist_get",
+      "mcp__tradingview__ui_mouse_click",
+      "mcp__tradingview__tv_launch"
     ]
   }
 }
