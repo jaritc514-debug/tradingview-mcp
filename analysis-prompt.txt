@@ -1,13 +1,19 @@
 Analyze the symbol currently open on my TradingView chart. Do not switch symbols.
 Act as a senior analyst using my two separate frameworks defined in rules.json: OTE Entry and HTF S&D Entry.
+
+OUTPUT STYLE: Be concise. State results and levels directly. Do not show intermediate math, bar references, box IDs, or color codes in the output. No sources section. One clear sentence per finding.
+
 Analyze in this order:
 
 ---
 
 STEP 1: LOCATION (Daily)
-- Measure swing high wick to swing low wick on Daily
+- Stay on Daily chart
+- Read Leg H and Leg L directly from data_get_pine_tables(study_filter="PxD Trend Engine") — Trend Summary table
+- Read current price from quote_get
+- Position = (current price − Leg L) / (Leg H − Leg L)
 - Divide into 3 equal sections
-- State clearly: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
+- State: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%) and the percentage
 - If Equilibrium: state NO TRADE and stop analysis
 - If Discount: bias is LONG only
 - If Premium: bias is SHORT only
@@ -15,107 +21,140 @@ STEP 1: LOCATION (Daily)
 ---
 
 STEP 2: DIRECTION (Daily)
-- Identify 6 recent pivots (3 highs + 3 lows) from current price backwards
-- Uptrend: minimum 2 x HL confirmed (HH not required)
-- Downtrend: minimum 2 x LH confirmed (LL not required)
-- Sideways: equal highs and lows — state NO TRADE and stop analysis
-- Anticipatory: 3-4 pivots pointing to next HL or LH — flag as lower conviction
-- State clearly: Uptrend / Downtrend / Sideways / Anticipatory
+- Read Trend, Status and Strength directly from data_get_pine_tables(study_filter="PxD Trend Engine") — Trend Summary table
+- Do not perform independent pivot analysis — trust v18 output entirely
+- State: Trend / Status / Strength
+- If Trend = Sideways: state NO TRADE and stop analysis
 
 ---
 
 STEP 3: ACTION MATRIX CHECK
-- Cross reference Location + Direction using action matrix from rules.json:
-  * Long valid: Discount + Uptrend or Sideways
-  * Short valid: Premium + Downtrend or Sideways
-  * No Action: everything else — including Discount + Downtrend and Premium + Uptrend
-- State whether a Long or Short is valid, lower conviction, or No Action
-- If No Action: stop analysis
+- Cross reference Location + Trend + Status:
+
+  Confirmed Bullish + Discount → LONG VALID ✓ full conviction
+  Confirmed Bearish + Premium → SHORT VALID ✓ full conviction
+  Unconfirmed Bullish + Discount → LONG VALID ⚠ lower probability — check 4H liquidity grab
+  Unconfirmed Bearish + Premium → SHORT VALID ⚠ lower probability — check 4H liquidity grab
+  Sideways (any location) → NO TRADE
+  Equilibrium (any trend) → NO TRADE
+  Everything else → NO ACTION
+
+- If Unconfirmed: check for liquidity grab (sweep of previous swing high/low on Daily chart) before the MSS that created the Unconfirmed state. State: Liquidity grab present / absent.
+- If Unconfirmed and no liquidity grab: state NO TRADE and stop analysis
+- If No Action: state NO TRADE and stop analysis
+- State: Long valid / Short valid / No Action + conviction level
 
 ---
 
 STEP 4A: OTE FRAMEWORK CHECK
-- Identify the last impulsive leg on 4H (wick to wick)
-- Calculate OTE retracement zone: 70.5% to 88.6%
-- State exact price levels for 70.5% (entry) and 88.6% (zone bottom) and 100% (SL level)
 
-OTE Confluence Checklist (assess all 4):
-1. Location confirmed in Step 1
-2. Liquidity sweep before the impulsive leg:
-   - With trend: odds enhancer only, not mandatory
-   - Counter trend or anticipatory: MANDATORY — if absent state NO TRADE
-3. BOS + Imbalance (FVG) confirming the impulsive leg — present or absent?
-4. Price retracing toward 70.5% — has it reached entry or still approaching?
+Part 1 — stay on Daily:
+- Ask the user for the 4H swing high and swing low before proceeding:
 
-OTE Setup Grade:
-- Absolute best: Small Brother (4H S&D zone) located within 70.5%-88.6% range + all 4 checklist items confirmed
-- A+: All 4 checklist items confirmed + FVG near entry (no Small Brother)
-- A: With trend + BOS confirmed + retracing to OTE (no sweep, no Small Brother, no FVG)
-- No trade: Counter trend or anticipatory without liquidity sweep
+  "Please provide your 4H swing high and swing low for the OTE calculation.
+   Format: Swing High: [price] | Swing Low: [price]"
 
-OTE Trade Parameters (if setup exists):
-- Limit entry: 70.5% retracement level
-- SL: Below swing low wick (100% Fibonacci level)
-- TP: Next structural target or opposing zone
-- R:R: Calculate and state — minimum 1:2 required
+- Wait for user input before continuing
+- Once received, calculate:
+  * 70.5% entry level
+  * 88.6% zone top
+  * State both levels clearly
+
+Part 2 — switch to 4H:
+- chart_set_timeframe → 4H
+- Do NOT re-read v18 — bias is locked from Steps 1 and 2
+- Read 4H ATR from data_get_pine_tables(study_filter="PxD Toolkit")
+- Calculate SL:
+  * Longs: swing low wick − (ATR × 0.10)
+  * Shorts: swing high wick + (ATR × 0.10)
+- Read 4H S&D zones from data_get_pine_labels(study_filter="Supply & Demand Pro", max_labels=200) and data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true)
+- Calculate FVGs from OHLCV bars (bullish: bar[i].low > bar[i-2].high / bearish: bar[i].high < bar[i-2].low)
+
+OTE Confluence (assess all 4, state each as confirmed/not confirmed in one line):
+1. Location — confirmed from Step 1
+2. Liquidity sweep before impulse — present or absent (Confirmed trend: odds enhancer / Unconfirmed trend: mandatory — already checked in Step 3)
+3. BOS confirmed + FVG present — state FVG price range only
+4. Price retracing toward 70.5% — in zone / approaching / not yet
+
+OTE Grade:
+- Absolute best: Small Brother (4H S&D zone) within OTE zone + all 4 confirmed
+- A+: All 4 confirmed + FVG near entry
+- A: With trend + BOS + retracing to OTE (no sweep/Small Brother/FVG)
+- No trade: Counter trend or anticipatory without sweep
+- Unconfirmed state adjustment: drop one grade automatically. Absolute Best → A+. A+ → A. A → no trade.
+
+OTE Trade Parameters:
+- Entry | SL | TP1 (swing low for shorts / swing high for longs) | TP2 (next opposing 4H S&D zone beyond TP1) | R:R to TP1 and R:R to TP2
+- Status: Active now / Approaching / Not yet in zone
+
+Proximity Alert:
+- SHORT setup: alert at entry − 1 ATR, condition: greater_than
+- LONG setup: alert at entry + 1 ATR, condition: less_than
+- If price already within 1 ATR of entry: skip alert, state "Set limit now — price within 1 ATR of entry"
+- Alert message format: "[PAIR] OTE [LONG/SHORT] — Set limit on MT5"
+
+Path-to-TP (4H S&D zones between entry and TP):
+- Fresh (purple) zone in path: ⚠️ WARNING — state zone level, note TP adjustment if R:R still viable
+- Grey (touched) zone in path: NOTED — not a blocker
+- No zone in path: Path clear
 
 ---
 
 STEP 4B: HTF S&D FRAMEWORK CHECK
-- Read zones from S&D Pro indicator first — prioritize indicator zones over structural approximations
-- For each zone note the following tags from the indicator:
-  * Timeframe (Daily or 4H)
-  * Formation label (RBD, RBR, DBR, DBD)
-  * F = Flip zone (NOT freshness)
-  * O = Original zone
-  * LoL = Level on Top of Level
-- If indicator returns no data fall back to structural analysis and flag output as approximate
 
-- Identify the nearest qualified Daily zone (Big Brother) — demand below price for longs, supply above for shorts
-- Identify any 4H zone (Small Brother) within or aligning with the Daily zone
-- Check all 6 zone qualifiers from rules.json for each zone:
-  1. Departure: explosive or decisive leg-out? (Great/Acceptable/Disqualified)
-  2. Base Duration: how many indecisive candles? (1-3 Great / 4-5 Acceptable / 6+ Disqualified)
-  3. Freshness: CANNOT be confirmed by indicator — flag as UNCONFIRMED and instruct trader to verify visually before entry
-  4. Originality: use O tag from indicator if present — if no tag, look left and assess from structure
-  5. Profit Margin: minimum 1:3 from proximal to next opposing zone
-  6. Arrival: for counter trend/sideways only — steep decisive/explosive arrival required
+4H zones (already on 4H from Step 4A):
+- Read 4H S&D zones from data_get_pine_labels(study_filter="Supply & Demand Pro", max_labels=200) and data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true)
+- Identify nearest qualified 4H zone (Small Brother) aligned with Daily bias
+- State zone: formation type, proximal, distal, freshness, tags (F/O/LoL)
 
-LOL Check:
-- Are there two zones stacked on the same timeframe?
-- Is the gap between them smaller than either zone?
-- If yes: LOL confirmed — entry at proximal of wider version of lower zone
+Switch back to Daily for Big Brother:
+- chart_set_timeframe → Daily
+- Read Daily S&D zones from data_get_pine_labels(study_filter="Supply & Demand Pro", max_labels=200) and data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true)
+- Identify nearest qualified Daily zone (Big Brother)
+- State zone: formation type, proximal, distal, freshness, tags (F/O/LoL)
+- State: Price is AT / approaching / away from zone
 
-HTF S&D Trade Parameters (if setup exists):
-- Entry: Proximal line of zone (preferred version) or wider version proximal for LOL
-- SL: Distal line + 33% buffer
-- TP: Next structural target or opposing zone
-- R:R: Calculate and state — minimum 1:2 required
+OTE–S&D alignment:
+- OTE entry aligns with Daily zone → EXTRA CONFLUENCE
+- OTE entry sells into Daily demand or buys into Daily supply:
+  * Grey zone: flag as risk, reduced conviction
+  * Purple zone: DO NOT TAKE THE TRADE
+
+Zone Qualifiers:
+1. Departure: PASS — confirmed by indicator
+2. Base Duration: PASS — confirmed by indicator
+3. Freshness: Purple = Fresh / Grey = Touched
+4. Originality: O tag = confirmed / no tag = assess from structure
+5. Profit Margin: R:R from proximal to next opposing zone — minimum 1:3
+6. Arrival: counter-trend/sideways only — steep arrival required / with-trend = skip
+- Unconfirmed state adjustment: drop one grade automatically
+
+LOL Check: two zones stacked with gap smaller than either zone? If yes — entry at proximal of wider lower zone.
+
+HTF S&D Trade Parameters:
+- Entry | SL (distal + 33% buffer) | TP | R:R — state levels only
+- Status: Active now / Approaching / Away
 
 ---
 
 STEP 5: MACRO CONTEXT
-- Search web for latest news on current symbol + DXY move + Fed/CPI impact
-- Does macro confirm or conflict with technical bias?
-- State clearly: Confirms / Conflicts / Neutral
+- Search web for latest news on current symbol + DXY + Fed/CPI impact
+- One sentence: Confirms / Conflicts / Neutral — and why
 
 ---
 
 STEP 6: FINAL VERDICT
-State separately for each framework:
 
 OTE Framework:
-- Setup exists: Yes / No
-- Grade: Absolute Best / A+ / A / No setup
-- Entry: [price] | SL: [price] | TP: [price] | R:R: [ratio]
-- Active now or waiting for price to reach entry zone?
+- Setup: Yes / No | Grade: Absolute Best / A+ / A / No setup
+- Entry | SL | TP | R:R
+- Status: Active / Approaching / No setup
 
 HTF S&D Framework:
-- Setup exists: Yes / No
-- Grade: A / B / No setup
-- Entry: [price] | SL: [price] | TP: [price] | R:R: [ratio]
-- Active now or waiting for price to reach zone?
+- Setup: Yes / No | Grade: A / B / No setup
+- Entry | SL | TP | R:R
+- Status: Active / Approaching / No setup
 
 Overall Bias: Bullish / Bearish / No trade
-What invalidates this analysis?
-Be direct. No filler. If there is no setup in either framework, say so.
+Conviction: Full (Confirmed) / Reduced (Unconfirmed)
+What invalidates this analysis? (2-3 bullet points max)

@@ -127,3 +127,57 @@ Claude Code ←→ MCP Server (stdio) ←→ CDP (localhost:9222) ←→ Trading
 ```
 
 Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines').get(false)._primitivesDataById`
+
+## Current Status
+Last updated: 2026-04-21
+
+### What was done
+- Set up Git workflow for session continuity
+- Confirmed CLAUDE.md exists and is being used for context
+
+### Next steps
+- Continue TradingView MCP development
+
+### Open questions / decisions pending
+- None currently
+
+## System Rules
+
+Rule 1 — Swing Range:
+"The daily/4H swing range is defined by the most recent confirmed swing high and swing low. The range updates whenever price breaks and closes past either extreme. Premium and discount are always measured from the current active range."
+Rule 2 — Tool Hierarchy:
+HTF system:
+
+Daily → Trend Engine (trend direction, swing points, premium/discount measurement)
+Daily → Supply & Demand Pro (zones)
+Daily → PxD Toolkit (FVGs, DO, PDH, PDL)
+4H → entry frame
+
+LTF system:
+
+4H → Trend Engine setting 12 (trend direction, significant pivot highlights)
+4H → PxD Toolkit setting 5 (swing structure detail, FVGs, DO, PDH, PDL)
+4H → Supply & Demand Pro (zones)
+15m → entry frame
+
+## HTF Pre-Trade Checklist
+PxD OTE HTF Pre-Trade Checklist
+
+Daily trend engine confirms bias direction
+Price is in premium (sells) or discount (buys) of the current active daily swing range
+Daily S&D zones confirm location adds confluence
+Drop to 4H — identify displacement leg with confirmed MSS or BOS
+Identify meaningful FVG within that displacement leg, preferably near the 70.5% level
+Set limit entry at 70.5% of the 4H displacement leg
+TP at opposing swing extreme
+
+## LTF Pre-Trade Checklist
+PxD OTE LTF Pre-Trade Checklist
+
+4H trend engine confirms bias direction
+Price is in premium (sells) or discount (buys) of the current active 4H swing range
+4H S&D zones confirm location adds confluence
+Drop to 15m — identify liquidity grab followed by displacement leg with confirmed MSS or BOS
+Identify meaningful FVG within that displacement leg, preferably near the 70.5% level
+Set limit entry at 70.5% of the 15m displacement leg
+TP at opposing swing extreme

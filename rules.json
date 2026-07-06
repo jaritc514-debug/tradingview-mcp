@@ -5,7 +5,7 @@
   "methodology": "Two separate frameworks: OTE Entry and HTF S&D Entry. Each has its own rules, confluences, and SL placement. Do not mix them.",
 
   "timeframe_hierarchy": {
-    "Daily": "Location (premium/discount/equilibrium) + Direction (trend)",
+    "Daily": "Bias (trend direction + confirmation status) read directly from PxD Trend Engine v18 dashboard",
     "4H": "Market timing and zone identification for both OTE and HTF S&D entries"
   },
 
@@ -26,7 +26,7 @@
 
   "location_analysis": {
     "timeframe": "Daily",
-    "method": "Measure swing high wick to swing low wick on Daily, divide into 3 equal sections",
+    "method": "Switch to Daily, read H1/H2/H3 and L1/L2/L3 from PxD Trend Engine v18 pivot table. Identify the most recent impulsive leg that contains current price — use the H and L of that SAME leg (they must come from the same move, not different legs). Position = (current price − leg low) / (leg high − leg low). Divide into 3 equal sections.",
     "zones": {
       "discount": "0% to 33% — look for longs only",
       "equilibrium": "33% to 66% — NO TRADE regardless of direction",
@@ -37,61 +37,57 @@
 
   "direction_analysis": {
     "timeframe": "Daily",
-    "method": "Identify 6 recent pivots (3 highs + 3 lows) from current price backwards",
-    "uptrend": {
-      "required": "Minimum 2 x Higher Lows (HL)",
-      "note": "Higher Highs not necessarily required — HL sequence is the key signal"
-    },
-    "downtrend": {
-      "required": "Minimum 2 x Lower Highs (LH)",
-      "note": "Lower Lows not necessarily required — LH sequence is the key signal"
+    "method": "Read Trend and Status directly from PxD Trend Engine v18 dashboard. Do not perform independent pivot analysis — trust v18 output entirely.",
+    "output_fields": {
+      "Trend": "Bullish / Bearish / Sideways",
+      "Status": "Confirmed / Unconfirmed",
+      "Strength": "Trending / Ranging"
     },
     "sideways": {
-      "definition": "Equal highs and equal lows — no clear sequence",
-      "rule": "If no clear trend is recognisable, define it as sideways — no trade"
-    },
-    "anticipatory": {
-      "definition": "Entry before trend is fully confirmed using 3-4 previous pivots to anticipate next pivot",
-      "rule": "Valid setup but lower conviction than confirmed trend — requires additional confluences"
+      "rule": "If Trend = Sideways — no trade regardless of location or framework. Hard stop."
     }
   },
 
   "action_matrix": {
-    "description": "Location + Direction must be assessed before any trade. All must be met.",
-    "demand_zones": {
-      "discount": {
-        "uptrend": "Long",
-        "sideways": "Long",
-        "downtrend": "No Action — do not long in downtrend"
-      },
-      "equilibrium": {
-        "uptrend": "No Action",
-        "sideways": "No Action",
-        "downtrend": "No Action"
-      },
-      "premium": {
-        "uptrend": "No Action",
-        "sideways": "No Action",
-        "downtrend": "No Action"
-      }
+    "description": "Location + Direction must be assessed before any trade. All conditions must be met.",
+    "confirmed_bullish": {
+      "discount": "Long — full conviction. Proceed to framework entry rules.",
+      "equilibrium": "No trade.",
+      "premium": "No trade."
     },
-    "supply_zones": {
-      "premium": {
-        "uptrend": "No Action — do not short in uptrend",
-        "sideways": "Short",
-        "downtrend": "Short"
-      },
-      "equilibrium": {
-        "uptrend": "No Action",
-        "sideways": "No Action",
-        "downtrend": "No Action"
-      },
-      "discount": {
-        "uptrend": "No Action",
-        "sideways": "No Action",
-        "downtrend": "No Action"
-      }
+    "confirmed_bearish": {
+      "premium": "Short — full conviction. Proceed to framework entry rules.",
+      "equilibrium": "No trade.",
+      "discount": "No trade."
+    },
+    "unconfirmed_bullish": {
+      "discount": "Long — valid but lower probability. Requires liquidity grab on 4H before the bullish MSS that created Unconfirmed Bullish state. No liquidity grab = no trade. Setup grade drops one level automatically.",
+      "equilibrium": "No trade.",
+      "premium": "No trade."
+    },
+    "unconfirmed_bearish": {
+      "premium": "Short — valid but lower probability. Requires liquidity grab on 4H before the bearish MSS that created Unconfirmed Bearish state. No liquidity grab = no trade. Setup grade drops one level automatically.",
+      "equilibrium": "No trade.",
+      "discount": "No trade."
+    },
+    "sideways": {
+      "any_location": "No trade. Hard filter."
     }
+  },
+
+  "liquidity_grab_rules": {
+    "definition": "A sweep of a previous swing high or low followed immediately by a reversal — price takes out liquidity then rejects",
+    "required_for": "Unconfirmed Bullish and Unconfirmed Bearish states only",
+    "timeframe": "4H is sufficient — does not need to be visible on Daily",
+    "bullish_mss": "Liquidity grab = sweep of a previous 4H swing low before price closes above the protected high (bear_leg_lh) creating Unconfirmed Bullish",
+    "bearish_mss": "Liquidity grab = sweep of a previous 4H swing high before price closes below the protected low (bull_leg_hl) creating Unconfirmed Bearish",
+    "hard_rule": "No liquidity grab on 4H = no trade in Unconfirmed state. Non-negotiable."
+  },
+
+  "setup_grade_adjustment": {
+    "confirmed_state": "Use standard setup grades as defined in framework rules",
+    "unconfirmed_state": "Automatically drop one grade level. Absolute Best → A+. A+ → A. A → no trade.",
+    "note": "Unconfirmed state with a grade that drops to below A = no trade regardless of other confluences"
   },
 
   "framework_1_OTE_entry": {
@@ -99,18 +95,23 @@
     "fibonacci_measurement": "Wick to wick — swing low wick to swing high wick",
     "ote_zone": "70.5% to 88.6% retracement",
     "limit_entry": "70.5% retracement level",
-    "sl_placement": "Below the swing low wick (100% Fibonacci level — not 88.6%)",
-    "tp": "Next structural target or opposing zone",
+    "entry_formula": {
+      "short": "Entry = swing_low + 0.705 × (swing_high − swing_low). Fib drawn from swing HIGH down to swing LOW. 0% = swing low (TP1), 100% = swing high (SL area). Entry is at the 70.5% level counting UP from the swing low.",
+      "long": "Entry = swing_high − 0.705 × (swing_high − swing_low). Fib drawn from swing LOW up to swing HIGH. 0% = swing high (TP1), 100% = swing low (SL area). Entry is at the 70.5% level counting DOWN from the swing high."
+    },
+    "sl_placement": "100% Fibonacci level + 10% of 4H ATR as buffer. For longs: swing low wick − (ATR × 0.10). For shorts: swing high wick + (ATR × 0.10).",
+    "tp1": "0% Fibonacci level — swing low for shorts, swing high for longs",
+    "tp2": "Next opposing 4H S&D zone beyond TP1",
     "minimum_rr": "1:2",
 
     "confluence_checklist": {
       "description": "Assess in this order before entry",
       "step_1_location": "Price must be in discount (longs) or premium (shorts) on Daily. Equilibrium = no trade.",
       "step_2_liquidity_sweep": {
-        "with_trend": "Liquidity sweep before impulse = odds enhancer only, not mandatory",
-        "counter_trend_or_anticipatory": "Liquidity sweep before impulse = MANDATORY. No sweep = no trade."
+        "with_trend_confirmed": "Liquidity sweep before impulse = odds enhancer only, not mandatory",
+        "unconfirmed_or_counter_trend": "Liquidity sweep before impulse = MANDATORY on 4H. No sweep = no trade."
       },
-      "step_3_bos_imbalance": "Break of Structure with imbalance (FVG) confirming the impulsive leg",
+      "step_3_bos_imbalance": "Break of Structure with imbalance (FVG) confirming the impulsive leg. Calculate FVGs from OHLCV bars: bullish FVG = bar[i].low > bar[i-2].high (zone: bar[i-2].high to bar[i].low), bearish FVG = bar[i].high < bar[i-2].low (zone: bar[i].high to bar[i-2].low). Do NOT use pine boxes — they return 2dp precision only.",
       "step_4_retracement": "Price retraces to 70.5% of the impulsive leg for limit entry"
     },
 
@@ -118,7 +119,8 @@
       "absolute_best": "Small Brother (4H S&D zone) located anywhere within 70.5%-88.6% OTE range + all 4 checklist items confirmed",
       "A_plus": "All 4 checklist items confirmed + FVG near entry (no Small Brother present)",
       "A": "With trend + BOS + OTE retracement (no sweep, no Small Brother, no FVG)",
-      "no_trade": "Counter trend or anticipatory without liquidity sweep before impulse"
+      "no_trade": "Counter trend or anticipatory without liquidity sweep before impulse",
+      "unconfirmed_adjustment": "If Daily Status = Unconfirmed, drop one grade. Absolute Best → A+. A+ → A. A → no trade."
     },
 
     "big_brother_small_brother": {
@@ -212,8 +214,9 @@
       },
 
       "3_freshness": {
+        "detection": "Read box color via data_get_pine_boxes(verbose=true) on Supply & Demand Pro. borderColor 1083317041 = Purple = Fresh. borderColor 1082555256 = Grey = Touched.",
         "LTF_4H": {
-          "great": "Zone has never been tested — completely fresh",
+          "great": "Zone has never been tested — completely fresh (Purple)",
           "acceptable": "Zone has been tested once (1st touch)",
           "not_acceptable": "Zone tested twice or more — disqualified"
         },
@@ -263,10 +266,10 @@
   "risk_rules": {
     "risk_per_trade": "1% of account per trade",
     "minimum_rr": "1:2 for all trade types",
-    "max_open_positions": 2,
-    "daily_stop_rule": "Stop trading after 2 consecutive losing trades",
+    "max_open_positions": "No fixed limit — trades can be entered on different days and run concurrently. Practical ceiling is ~4 open at once based on setup frequency across 20 pairs.",
+    "daily_stop_rule": "Stop trading after 2 consecutive losing trades on the same day, OR when FTMO daily drawdown limit is reached — whichever comes first.",
     "sl_by_entry_type": {
-      "OTE_entry": "Below swing low wick (100% Fibonacci level)",
+      "OTE_entry": "100% Fibonacci level + 10% of 4H ATR. Longs: swing low wick − (ATR × 0.10). Shorts: swing high wick + (ATR × 0.10).",
       "HTF_SD_entry": "Distal line of zone + 33% buffer",
       "LOL_entry": "Distal of lower zone + 33% buffer"
     }
@@ -281,9 +284,9 @@
       "O": "Original zone — not caused by a reaction to another zone to its left",
       "LoL": "Level on Top of Level — two zones stacked with gap smaller than either zone"
     },
-    "freshness": "Cannot be confirmed by indicator — trader must verify visually. Claude Code must flag freshness as UNCONFIRMED and instruct trader to verify before entry.",
+    "freshness": "Confirmed via box color from data_get_pine_boxes (verbose=true) on Supply & Demand Pro indicator. borderColor 1083317041 = Purple = Fresh (untouched). borderColor 1082555256 = Grey = Touched. borderColor null = historical zone, status unknown. No longer requires visual verification.",
     "fallback": "If indicator returns no data, fall back to structural price analysis and flag as approximate."
   },
 
-  "notes": "Two separate frameworks must never be mixed. OTE entry uses Fibonacci retracement (70.5-88.6%) of last impulsive leg wick to wick, with confluence checklist: location, liquidity sweep, BOS + imbalance, and 70.5% limit entry. Small Brother within OTE zone and FVG near entry are optional confluences that upgrade setup grade. HTF S&D entry uses zone qualifiers and action matrix, with Big Brother (Daily zone) and Small Brother (4H zone) as the primary confluence — Daily provides HTF context, 4H is the entry timeframe. Both frameworks require Location and Direction assessment on Daily first."
+  "notes": "Two separate frameworks must never be mixed. OTE entry uses Fibonacci retracement (70.5-88.6%) of last impulsive leg wick to wick, with confluence checklist: location, liquidity sweep, BOS + imbalance, and 70.5% limit entry. Small Brother within OTE zone and FVG near entry are optional confluences that upgrade setup grade. HTF S&D entry uses zone qualifiers and action matrix, with Big Brother (Daily zone) and Small Brother (4H zone) as the primary confluence — Daily provides HTF context, 4H is the entry timeframe. Both frameworks require Location and Direction assessment on Daily first using PxD Trend Engine v18 output. Unconfirmed states are valid but require a 4H liquidity grab before the MSS and automatically drop one setup grade."
 }

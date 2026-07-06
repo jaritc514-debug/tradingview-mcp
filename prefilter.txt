@@ -5,7 +5,11 @@ Only complete these 3 steps and give a single verdict at the end.
 ---
 
 STEP 1: LOCATION (Daily)
-- Measure swing high wick to swing low wick on Daily
+- Switch chart to Daily
+- Read H1/H2/H3 and L1/L2/L3 from data_get_pine_tables(study_filter="PxD Trend Engine") — use the Pivot Levels table
+- Read Leg H and Leg L directly from data_get_pine_tables(study_filter="PxD Trend Engine") — use the Trend Summary table rows "Leg H" and "Leg L"
+- Position = (current price − Leg L) / (Leg H − Leg L)
+- Position = (current price − leg low) / (leg high − leg low)
 - Divide into 3 equal sections
 - State: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
 - If Equilibrium: output "NO TRADE — Equilibrium" and stop immediately
@@ -13,20 +17,31 @@ STEP 1: LOCATION (Daily)
 ---
 
 STEP 2: DIRECTION (Daily)
-- Identify 6 recent pivots (3 highs + 3 lows) from current price backwards
-- State: Uptrend / Downtrend / Sideways / Anticipatory
-- If Sideways: output "NO TRADE — Sideways" and stop immediately
+- Read Trend and Status directly from data_get_pine_tables(study_filter="PxD Trend Engine") — use the Trend Summary table
+- Do not perform independent pivot analysis — trust v18 output entirely
+- If Trend = Sideways: output "NO TRADE — Sideways" and stop immediately
 
 ---
 
 STEP 3: ACTION MATRIX
-- Cross reference Location + Direction using simplified rules:
-  * Long valid: Discount + Uptrend or Sideways only
-  * Short valid: Premium + Downtrend or Sideways only
-  * No Action: everything else — including Discount + Downtrend and Premium + Uptrend
+- Cross reference Location + Direction + Status using these rules:
+
+  Confirmed Bullish + Discount → LONG VALID ✓ (full conviction)
+  Confirmed Bearish + Premium → SHORT VALID ✓ (full conviction)
+
+  Unconfirmed Bullish + Discount → LONG VALID (lower probability — requires 4H liquidity grab check in full analysis)
+  Unconfirmed Bearish + Premium → SHORT VALID (lower probability — requires 4H liquidity grab check in full analysis)
+
+  Sideways (any location) → NO TRADE
+  Equilibrium (any trend) → NO TRADE
+  Confirmed Bullish + Premium → NO ACTION
+  Confirmed Bearish + Discount → NO ACTION
+  Unconfirmed Bullish + Premium → NO ACTION
+  Unconfirmed Bearish + Discount → NO ACTION
+
 - If No Action: output "NO TRADE — No Action" and stop immediately
 
 ---
 
 VERDICT (one line only):
-[PAIR] — [Location] — [Direction] — [Long valid / Short valid / No Action] — PROCEED or NO TRADE
+[PAIR] — [Location %] — [Trend] — [Status] — [Long valid / Short valid / No Action] — PROCEED or NO TRADE

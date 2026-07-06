@@ -1,0 +1,88 @@
+Run the prefilter across all FX pairs in the OTE x PxD watchlist.
+
+Pairs to scan (in this order):
+AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY,
+AUDJPY, AUDNZD, CADCHF, CADJPY, CHFJPY, EURCAD, EURCHF,
+EURGBP, EURJPY, GBPCAD, GBPCHF, GBPJPY, NZDJPY
+
+Skip: DXY, XAUUSD, NQ1!, ES1!, YM1!, GER40
+
+---
+
+For each pair, in sequence:
+1. chart_set_symbol → switch to the pair
+2. chart_set_timeframe → Daily
+3. quote_get → current price
+4. data_get_pine_tables(study_filter="PxD Trend Engine") → read both Trend Summary and Pivot Levels tables
+
+Then calculate:
+
+STEP 1 — LOCATION:
+- Read Leg H and Leg L directly from Trend Summary table
+- Position = (current price − Leg L) / (Leg H − Leg L)
+- Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
+- If Equilibrium: mark as NO TRADE but continue to Step 2 — do NOT stop
+
+STEP 2 — DIRECTION:
+- Read Trend and Status directly from Trend Summary table
+- Do not perform independent pivot analysis — trust v18 output entirely
+- Always read and record Trend and Status regardless of location
+- If Trend = Sideways: mark as NO TRADE
+
+STEP 3 — ACTION MATRIX:
+- Cross reference Location + Trend + Status:
+
+  Confirmed Bullish + Discount → LONG VALID ✓
+  Confirmed Bearish + Premium → SHORT VALID ✓
+  Unconfirmed Bullish + Discount → LONG VALID ⚠ (lower probability)
+  Unconfirmed Bearish + Premium → SHORT VALID ⚠ (lower probability)
+  Any trend + Equilibrium → NO TRADE (EQ)
+  Sideways (any location) → NO TRADE (Sideways)
+  Everything else → NO ACTION
+
+---
+
+OUTPUT FORMAT:
+Print a single ranked table after ALL pairs are scanned. Do not print results mid-scan.
+
+Sort order:
+1. SHORT VALID ✓ (Confirmed) first
+2. SHORT VALID ⚠ (Unconfirmed) second
+3. LONG VALID ✓ (Confirmed) third
+4. LONG VALID ⚠ (Unconfirmed) fourth
+5. NO ACTION fifth
+6. NO TRADE (EQ) — sorted by Status: Confirmed first, Unconfirmed second, Sideways last
+7. NO TRADE (Sideways) last
+
+One line per pair — always show all columns regardless of verdict:
+[PAIR] | [Location %] | [Trend] | [Status] | [Verdict]
+
+Example:
+EURUSD  | Premium 78%      | Bearish  | Confirmed   | SHORT VALID ✓
+NZDUSD  | Premium 65%      | Bearish  | Unconfirmed | SHORT VALID ⚠
+AUDUSD  | Discount 28%     | Bullish  | Confirmed   | LONG VALID ✓
+GBPUSD  | Discount 31%     | Bullish  | Unconfirmed | LONG VALID ⚠
+USDCAD  | Discount 22%     | Bearish  | Confirmed   | NO ACTION
+USDJPY  | Equilibrium 51%  | Bullish  | Confirmed   | NO TRADE (EQ)
+USDCHF  | Equilibrium 48%  | Bearish  | Unconfirmed | NO TRADE (EQ)
+EURCAD  | Equilibrium 55%  | Sideways | –           | NO TRADE (Sideways)
+
+After the table, state:
+- Total pairs scanned
+- How many are actionable (SHORT VALID or LONG VALID)
+- How many are Confirmed vs Unconfirmed among actionable pairs
+- How many are in EQ — flag the Confirmed ones as "watch list — priority when EQ breaks"
+
+Then output a READY TO ANALYZE block at the bottom formatted exactly like this:
+
+---
+READY TO ANALYZE — copy and paste when ready:
+
+"Run analysis-prompt.txt on [PAIR1], then [PAIR2], then [PAIR3] in sequence. Do not switch symbols between analyses unless instructed."
+---
+
+Rules for building this command:
+- Include ALL SHORT VALID and LONG VALID pairs — do not filter or cap
+- Order: Confirmed SHORT VALID first, Confirmed LONG VALID second, Unconfirmed SHORT VALID third, Unconfirmed LONG VALID last
+- If no actionable pairs exist, state: "No actionable pairs this session — no analysis needed."
+- Do not include NO ACTION or NO TRADE pairs in the READY TO ANALYZE command

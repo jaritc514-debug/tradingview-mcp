@@ -21,7 +21,10 @@
       "mcp__tradingview__pine_smart_compile",
       "mcp__tradingview__pine_set_source",
       "mcp__tradingview__ui_open_panel",
-      "mcp__tradingview__ui_click"
+      "mcp__tradingview__ui_click",
+      "mcp__tradingview__pine_open",
+      "mcp__tradingview__pine_get_source",
+      "mcp__tradingview__pine_list_scripts"
     ]
   }
 }
