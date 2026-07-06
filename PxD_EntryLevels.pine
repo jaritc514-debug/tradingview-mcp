@@ -1,0 +1,131 @@
+//@version=5
+indicator("PxD Entry Levels", overlay=true, max_lines_count=10, max_labels_count=10)
+
+// ── Inputs ──────────────────────────────────────────────────────────
+pivPeriod = input.int(6,     "Pivot Period",     minval=1,             group="Settings")
+show786   = input.bool(true, "Show 78.6% Level",                       group="Settings")
+decimals  = input.int(3,     "Price Decimals",   minval=0, maxval=5,   group="Settings")
+slCol     = input.color(color.gray, "SL / TP Color",                   group="Colors")
+oteCol    = input.color(#B8860B,    "OTE / 78.6 Color",                group="Colors")
+
+// ── Pivot Detection ─────────────────────────────────────────────────
+ph = ta.pivothigh(high, pivPeriod, pivPeriod)
+pl = ta.pivotlow (low,  pivPeriod, pivPeriod)
+
+var float ph1  = na
+var int   ph1i = na
+var float pl1  = na
+var int   pl1i = na
+var int   slBar = na  // bar index of the current SL pivot (line start point)
+
+if not na(ph)
+    ph1  := ph
+    ph1i := bar_index - pivPeriod
+
+if not na(pl)
+    pl1  := pl
+    pl1i := bar_index - pivPeriod
+
+// ── Direction ───────────────────────────────────────────────────────
+bearDir = not na(ph1) and not na(pl1) and ph1i > pl1i
+bullDir = not na(ph1) and not na(pl1) and pl1i > ph1i
+
+// ── Adaptive TP (running extreme since last directional pivot) ───────
+// Captures the lowest low (bears) or highest high (bulls) since the SL pivot confirmed
+var float runLow  = na
+var float runHigh = na
+
+if not na(ph)
+    runLow  := ta.lowest(low, pivPeriod)   // catch any displacement already in progress
+
+if not na(pl)
+    runHigh := ta.highest(high, pivPeriod)
+
+if bearDir
+    runLow  := na(runLow)  ? low  : math.min(runLow,  low)
+if bullDir
+    runHigh := na(runHigh) ? high : math.max(runHigh, high)
+
+// ── Level Calculation ────────────────────────────────────────────────
+// Bear: SL = pivot high | TP = running low (adaptive, always dashed)
+// Bull: SL = pivot low  | TP = running high (adaptive, always dashed)
+// TP becomes solid automatically on next setup (it becomes the new SL)
+
+slLvl  = bearDir ? ph1     : bullDir ? pl1     : na
+tpLvl  = bearDir ? runLow  : bullDir ? runHigh : na
+
+oteLvl = float(na)
+f786   = float(na)
+
+if not na(slLvl) and not na(tpLvl) and slLvl != tpLvl
+    rng = math.abs(slLvl - tpLvl)
+    if bearDir
+        oteLvl := tpLvl + 0.705 * rng   // retrace UP into bearish leg
+        f786   := tpLvl + 0.786 * rng
+    else if bullDir
+        oteLvl := tpLvl - 0.705 * rng   // retrace DOWN into bullish leg
+        f786   := tpLvl - 0.786 * rng
+
+// ── Format Helper ────────────────────────────────────────────────────
+fmt(v) =>
+    d = decimals
+    d == 0 ? str.tostring(v, "#")        :
+     d == 1 ? str.tostring(v, "#.0")     :
+     d == 2 ? str.tostring(v, "#.00")    :
+     d == 3 ? str.tostring(v, "#.000")   :
+     d == 4 ? str.tostring(v, "#.0000")  :
+              str.tostring(v, "#.00000")
+
+// ── Lines & Labels ───────────────────────────────────────────────────
+var line  lSL  = line.new(na, na, na, na, extend=extend.right, style=line.style_solid)
+var line  lTP  = line.new(na, na, na, na, extend=extend.right, style=line.style_dashed)
+var line  lOTE = line.new(na, na, na, na, extend=extend.right, style=line.style_solid)
+var line  l786 = line.new(na, na, na, na, extend=extend.right, style=line.style_dotted)
+
+var label labSL  = label.new(na, na, style=label.style_none, size=size.small)
+var label labTP  = label.new(na, na, style=label.style_none, size=size.small)
+var label labOTE = label.new(na, na, style=label.style_none, size=size.small)
+var label lab786 = label.new(na, na, style=label.style_none, size=size.small)
+
+// Track which bar the current SL pivot is on (line start point)
+if bearDir and not na(ph1i)
+    slBar := ph1i
+if bullDir and not na(pl1i)
+    slBar := pl1i
+
+if barstate.islast
+    int x0     = na(slBar) ? bar_index - 50 : slBar  // line starts at SL pivot bar
+    int xl     = bar_index + 3                         // label position: just right of current bar
+    transp     = color.new(color.white, 100)
+
+    // SL — solid
+    line.set_xy1(lSL, x0, nz(slLvl))
+    line.set_xy2(lSL, bar_index, nz(slLvl))
+    line.set_color(lSL, na(slLvl) ? transp : slCol)
+    label.set_xy(labSL, xl, nz(slLvl))
+    label.set_text(labSL, na(slLvl) ? "" : "SL: " + fmt(slLvl))
+    label.set_textcolor(labSL, na(slLvl) ? transp : slCol)
+
+    // TP — dashed (adaptive until next pivot confirms it)
+    line.set_xy1(lTP, x0, nz(tpLvl))
+    line.set_xy2(lTP, bar_index, nz(tpLvl))
+    line.set_color(lTP, na(tpLvl) ? transp : slCol)
+    label.set_xy(labTP, xl, nz(tpLvl))
+    label.set_text(labTP, na(tpLvl) ? "" : "TP: " + fmt(tpLvl))
+    label.set_textcolor(labTP, na(tpLvl) ? transp : slCol)
+
+    // OTE 70.5% — solid gold
+    line.set_xy1(lOTE, x0, nz(oteLvl))
+    line.set_xy2(lOTE, bar_index, nz(oteLvl))
+    line.set_color(lOTE, na(oteLvl) ? transp : oteCol)
+    label.set_xy(labOTE, xl, nz(oteLvl))
+    label.set_text(labOTE, na(oteLvl) ? "" : "KILLSHOT: " + fmt(oteLvl))
+    label.set_textcolor(labOTE, na(oteLvl) ? transp : oteCol)
+
+    // 78.6% — dotted gold (toggleable)
+    line.set_xy1(l786, x0, nz(f786))
+    line.set_xy2(l786, bar_index, nz(f786))
+    line.set_color(l786, (na(f786) or not show786) ? transp : oteCol)
+    label.set_xy(lab786, xl, nz(f786))
+    label.set_text(lab786, (na(f786) or not show786) ? "" : "78.6: " + fmt(f786))
+    label.set_textcolor(lab786, (na(f786) or not show786) ? transp : oteCol)

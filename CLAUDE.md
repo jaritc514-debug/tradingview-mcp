@@ -128,56 +128,85 @@ Claude Code ←→ MCP Server (stdio) ←→ CDP (localhost:9222) ←→ Trading
 
 Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines').get(false)._primitivesDataById`
 
-## Current Status
-Last updated: 2026-04-21
-
-### What was done
-- Set up Git workflow for session continuity
-- Confirmed CLAUDE.md exists and is being used for context
-
-### Next steps
-- Continue TradingView MCP development
-
-### Open questions / decisions pending
-- None currently
+## Status — July 6 (Night 1: inventory complete)
+- EntryLevels.pine: rendering layer GOOD (reuse for v2); leg-selection brain is naive recency (no MSS/BOS gate) — fibs internal legs, replace entirely per SPEC v2
+- Toolkit v3: MSS/BOS module already close-based (spec-compliant); HTF Context = v0 of Location Engine BUT uses lookahead_on (REPAINTS) — DO-NOT-CONSUME by any tool/module; DELETE from toolkit on v1 cutover. Owner never uses its shading (location is manual fib, 2-window Daily/4H setup) — no live contamination
+- Toolkit equal-pivot inconsistency: labels use >=, trend uses strict > — validation log note
+- Live chart swing period = 6, code default = 5 — align in v2
+- Next: Night 2 = ZigZag 12/3/1 port, verify pivot-for-pivot vs paid tool on EURUSD D+4H
+- Night 2 PASSED 50/50 EURUSD D+4H (ZigZag Layer 1 committed)
+- Night 3 PASSED 8/8 (EURUSD, AUDUSD, USDJPY, AUDNZD × D+4H — rev D committed)
+- Known diffs for validation log: (1) equal-pivot convention (labels >= vs strict >), (2) engine registers shallow-window pivots the paid tool skips in strong trends (USDJPY 4H, 2/25 extra) — possible earlier Confirmed status, watch during validation
+- Next: Night 4 = location module + verdict matrix + MTF dashboard (1D+4H rows). Night 4 GATE requires fresh eyes — manual fib comparison on 5 pairs, NOT to be run end-of-shift
+- Night 4 code COMPILED (rev G committed) — location + hybrid verdict + MTF dashboard + chart-TF-first rows. GATE NOT RUN. Gate = fresh eyes: manual fib vs engine leg lines on 5 pairs Daily, verdict cells traced to SPEC matrix. First live verdicts sane: EURUSD D 21.6% CT WATCH ✔, 4H 58.5% NO TRADE ✔
 
 ## System Rules
 
-Rule 1 — Swing Range:
-"The daily/4H swing range is defined by the most recent confirmed swing high and swing low. The range updates whenever price breaks and closes past either extreme. Premium and discount are always measured from the current active range."
+Rule 1 — Trend Direction:
+"Trend direction and status are read EXCLUSIVELY from the Trend Direction Pro indicator table (bottom-left corner of chart). Use data_get_pine_tables(study_filter='Trend Direction Pro') to read it. Read the 1D row for Daily bias and the 1W row for Weekly context. Do NOT perform independent pivot analysis for trend direction. Do NOT use HH/HL/LH/LL labels for trend — use them only for swing level identification.
+
+Verdict logic: VALID = clear Daily trend + correct price location. CAUTION = equilibrium or path obstacle. SKIP = table unreadable or no trend at all. Confirmed/Unconfirmed, Ranging/Trending, and Weekly alignment are DATA TAGS only — they never change the verdict and never prevent a trade. Log them in output for the trader's data collection."
+
 Rule 2 — Tool Hierarchy:
-HTF system:
+HTF system (4H execution):
+  Daily → Trend Direction Pro (trend direction, status, strength)
+  Daily → PxD Toolkit (swing labels for location fib, BOS/MSS labels, LQ markers, FVG boxes)
+  4H → entry frame (BOS/MSS labels, displacement leg, OTE calculation, FVG boxes)
 
-Daily → Trend Engine (trend direction, swing points, premium/discount measurement)
-Daily → Supply & Demand Pro (zones)
-Daily → PxD Toolkit (FVGs, DO, PDH, PDL)
-4H → entry frame
+LTF system (15m execution):
+  4H → Trend Direction Pro (trend direction, status, strength — replaces Daily as bias)
+  4H → PxD Toolkit (swing labels, BOS/MSS, LQ markers, FVG boxes)
+  Daily → Trend Direction Pro (logged as background context only — does not override 4H bias)
 
-LTF system:
+Rule 3 — Path Obstacle Detection:
+"Obstacles in the path to TP are identified using Supply & Demand Pro zones only. Read data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true). Fresh (untouched) zones = dark blue = bgColor 2133728284 or 2116951068. Touched/mitigated zones = grey = bgColor 439234094 or null — ignore these entirely. For buys: flag fresh Supply zones between current price and swing high (TP). For sells: flag fresh Demand zones between current price and swing low (TP). LQ labels are never obstacles — they signal liquidity already swept."
 
-4H → Trend Engine setting 12 (trend direction, significant pivot highlights)
-4H → PxD Toolkit setting 5 (swing structure detail, FVGs, DO, PDH, PDL)
-4H → Supply & Demand Pro (zones)
-15m → entry frame
+Rule 4 — Location Assessment:
+"Read HH/HL/LH/LL swing labels using data_get_pine_labels(study_filter='PxD Toolkit', verbose=true). Verbose mode returns all labels with bar_index. Sort by bar_index DESCENDING so the most recent labels are first.
 
-## HTF Pre-Trade Checklist
-PxD OTE HTF Pre-Trade Checklist
+Swing low = most recent HL or LL label (highest bar_index among HL/LL labels)
+Swing high = most recent HH or LH label with bar_index HIGHER than the swing low's bar_index
+  → If none exists: swing high UNCONFIRMED
 
-Daily trend engine confirms bias direction
-Price is in premium (sells) or discount (buys) of the current active daily swing range
-Daily S&D zones confirm location adds confluence
-Drop to 4H — identify displacement leg with confirmed MSS or BOS
-Identify meaningful FVG within that displacement leg, preferably near the 70.5% level
-Set limit entry at 70.5% of the 4H displacement leg
-TP at opposing swing extreme
+Always state the swing low price and its label type (e.g. 'HL @ 0.77954, bar 911')
 
-## LTF Pre-Trade Checklist
-PxD OTE LTF Pre-Trade Checklist
+If swing high confirmed: Location % = (price − swing low) / (swing high − swing low) × 100
+If swing high unconfirmed:
+  Within 1 ATR above swing low → Discount (provisional)
+  1–3 ATR above → Premium (provisional)
+  More than 3 ATR above → Extreme Premium (provisional)
 
-4H trend engine confirms bias direction
-Price is in premium (sells) or discount (buys) of the current active 4H swing range
-4H S&D zones confirm location adds confluence
-Drop to 15m — identify liquidity grab followed by displacement leg with confirmed MSS or BOS
-Identify meaningful FVG within that displacement leg, preferably near the 70.5% level
-Set limit entry at 70.5% of the 15m displacement leg
-TP at opposing swing extreme
+Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium"
+
+Rule 4b — Obstacle Definition:
+"An obstacle is a fresh Supply & Demand Pro zone (bgColor 2133728284 or 2116951068) sitting between current price and the NEAREST realistic TP only. The nearest TP = closest swing high (buys) or swing low (sells) within the current move. Do not flag zones beyond that TP — they are irrelevant. Do not flag LQ labels as obstacles."
+
+Rule 5 — FVG Detection:
+"Read data_get_pine_boxes(study_filter='PxD Toolkit', verbose=true). Filter boxes with bgColor 623783470 — confirmed FVG box color. Check if any FVG is within 1 ATR of the KILLSHOT entry level."
+
+Rule 6 — Liquidity Grab Detection:
+"Read LQ labels from data_get_pine_labels(study_filter='PxD Toolkit'). LQ label with arrow = liquidity has already been swept from a previous high or low — this is a PAST EVENT and a positive confluence signal, not an obstacle. Never flag an LQ label as a barrier or obstacle in the path. For confluence: check if an LQ sweep appears immediately BEFORE the most recent BOS or MSS being analyzed. Do not flag old LQ labels from unrelated prior structure. LQ sweep is an odds enhancer — it is not mandatory to take a trade."
+
+## HTF Pre-Trade Checklist (4H Execution)
+
+1. Read Trend Direction Pro 1D row → Daily Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)
+2. Read Trend Direction Pro 1W row → Weekly Trend, Status, Strength (context only — never disqualifies)
+3. Fib the dominant Daily swing leg using PxD Toolkit labels → confirm price is in Discount (buys) or Premium (sells)
+4. Switch to 4H → find most recent BOS or MSS in direction of Daily bias
+5. Check for LQ sweep immediately before that BOS/MSS (odds enhancer)
+6. Identify the displacement leg → calculate OTE entry at 70.5% retracement
+7. Confirm FVG present at OTE entry level (PxD Toolkit box bgColor 1531263542)
+8. Grade: A (all confluences) / B (3 of 4) / C (2 of 4) / No setup
+9. Set limit at OTE entry, SL at 100% fib ± (ATR × 0.10), TP1 at 0% fib
+10. Set proximity alert 1 ATR away from entry
+
+## LTF Pre-Trade Checklist (15m Execution)
+
+1. Read Trend Direction Pro 4H row (or 1D row on 4H chart) → 4H Trend, Status, Strength → this is your bias
+2. Read Trend Direction Pro 1D and 1W rows → log as background context
+3. Fib the dominant 4H swing leg → confirm price location
+4. On 4H → find BOS or MSS in direction of 4H bias
+5. Check for LQ sweep before BOS/MSS
+6. Identify displacement leg → calculate OTE at 70.5%
+7. Confirm FVG at entry
+8. Grade and set parameters same as HTF checklist

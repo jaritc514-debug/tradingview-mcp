@@ -1,0 +1,81 @@
+4H ANALYSIS — PxD Trading System
+=====================================
+IMPORTANT: This prompt is token-sensitive. Do NOT take screenshots. Do NOT output explanations, paragraphs, or detail sections. Output ONLY the final lines specified below — nothing else.
+
+---
+
+STEP 1 — FIND BOS OR MSS (4H)
+- chart_set_timeframe → 4H
+- data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → read all structure labels
+- Sort by bar_index DESCENDING
+- Find the most recent BOS or MSS label in the direction of the Daily bias
+- If MSS present but a subsequent BOS has confirmed → use BOS only
+
+If neither found:
+  Read the most recent BOS or MSS (any direction) to state current structure.
+  Output ONLY these 3 lines then STOP — no extra text:
+
+  [PAIR] | [BUY/SELL] | No Setup
+  4H structure is currently [Bullish/Bearish] — no [bullish/bearish] BOS or MSS yet.
+  Waiting for a [bullish/bearish] structure shift before entry is valid. Monitor and re-run when structure changes.
+
+---
+
+STEP 2 — LQ SWEEP
+- From the same label data: was there an LQ label immediately BEFORE the BOS/MSS from Step 1?
+- Do not flag old unrelated LQ labels
+- Result: LQ ✅ or LQ ❌
+
+---
+
+STEP 3 — READ ENTRY LEVELS
+- data_get_pine_labels(study_filter="PxD Entry Levels") → read labels
+- Extract: SL, KILLSHOT, TP prices from labels
+- If indicator not on chart: output "PxD Entry Levels not found — add to 4H tab" and stop
+
+---
+
+STEP 4 — TRADE PARAMETERS
+- data_get_pine_tables(study_filter="PxD Toolkit") → ATR value
+- quote_get → current price
+- SL = SL label price ± (ATR × 0.10)
+- Entry = KILLSHOT price
+- TP = TP label price
+- R:R = abs(Entry − SL) / abs(TP − Entry)
+- If R:R below 1:2 → output "INSUFFICIENT R:R — no trade" and stop
+
+---
+
+STEP 5 — FVG CHECK
+- data_get_pine_boxes(study_filter="PxD Toolkit", verbose=true)
+- Filter boxes with bgColor 623783470 (confirmed FVG box color from PxD Toolkit)
+- FVG within 1 ATR of KILLSHOT? Yes ✅ or No ❌
+
+---
+
+STEP 6 — GRADE
+Daily location was already confirmed CORRECT by analysis-daily.txt — do not recalculate or re-read it. Always mark as ✅.
+1. Location: ✅ (confirmed by analysis-daily.txt)
+2. LQ sweep ✅/❌
+3. BOS/MSS confirmed ✅/❌
+4. FVG at KILLSHOT ✅/❌
+5. Weekly agrees ✅/❌
+
+A = 1–4 all ✅ + weekly agrees | B = 3/4 ✅ | C = 2/4 ✅
+
+---
+
+STEP 7 — PROXIMITY
+- Within 1 ATR of KILLSHOT → "Set limit now"
+- 1–3 ATR away → "Set proximity alert"
+- Further → "Monitor"
+
+---
+
+FINAL OUTPUT — output ONLY these 5 lines, nothing else:
+
+[PAIR] | [BUY/SELL] | Grade: [A/B/C]
+Structure: [BOS/MSS] | LQ: [Yes/No]
+KILLSHOT: [price] | SL: [price] | TP: [price] | R:R: [x:x]
+FVG: [Yes — price range / No]
+Status: [Set limit now / Set proximity alert / Monitor]

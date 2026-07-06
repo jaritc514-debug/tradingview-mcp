@@ -1,0 +1,900 @@
+//@version=5
+indicator("PxD Toolkit v3", overlay = true, max_bars_back = 5000, max_lines_count = 500, max_boxes_count = 500, max_labels_count = 500)
+
+color CLEAR = color.rgb(0,0,0,100)
+
+// ── Checklist Table inputs ─────────────────────────────────────────────────────
+grpChk  = "Checklist Table"
+showChk   = input.bool(true,   "Show Table",  group=grpChk)
+chkSize   = input.string("Normal", "Text Size", options=["Tiny","Small","Normal","Large"], group=grpChk)
+chkHTF = input.bool(false, "HTF Alignment",   group=grpChk)
+chkLQ  = input.bool(false, "Liquidity Sweep", group=grpChk)
+chkBOS = input.bool(false, "BOS or MSS",      group=grpChk)
+chkImb = input.bool(false, "Imbalance",       group=grpChk)
+
+showms          = input(true, title="Market Structure", inline="0", group="Market Structure")
+bosColor1       = input.color(#787b86, '', group="Market Structure", inline="0")
+bosColor2       = input.color(#787b86, '', group="Market Structure", inline="0")
+bosLineStyle    = input.string("Solid", "BOS/MSS Line Style", options=["Solid","Dashed","Dotted"], group="Market Structure")
+showSwing       = input.bool(false, 'Swing Points', group="Market Structure", inline="3")
+swingSize_swing = input.int(5, "Swing Point Period", inline="4", group="Market Structure")
+label_sizes_s   = input.string("Medium", options=["Small","Medium","Large"], title="Label Size", inline="4", group="Market Structure")
+label_size_buysell_s = label_sizes_s == "Small" ? size.tiny : label_sizes_s == "Medium" ? size.small : size.normal
+label_size_buysell   = label_sizes_s == "Small" ? size.tiny : label_sizes_s == "Medium" ? size.small : size.normal
+swingColor      = input.color(#787b86, '', group="Market Structure", inline="3")
+triangleColor   = input.color(color.gray, "Triangle Color", group="Market Structure", inline="3")
+swingDispMode   = input.string("Labels", "Swing Style", options=["Labels","Triangles","Both"], group="Market Structure", inline="5")
+
+grpFVG     = "Fair Value Gaps"
+showFVG    = input.bool(true, "Show FVGs", group=grpFVG)
+fvgBullCol = input.color(color.new(color.white, 60), "Bullish Outline", group=grpFVG)
+fvgBearCol = input.color(color.new(color.gray,  60), "Bearish Outline", group=grpFVG)
+fvgFillCol = input.color(color.new(color.black, 20), "Box Fill",        group=grpFVG)
+fvgBorderW = input.int(1, "Border Width", minval=1, maxval=3, group=grpFVG)
+
+grpLQ        = "Liquidity Grabs"
+showLQ       = input.bool(true,  "Show Liquidity Grabs", group=grpLQ)
+lqArrowColor = input.color(color.orange, "Arrow Color", group=grpLQ)
+lqTextColor  = input.color(color.white,  "Text Color",  group=grpLQ)
+lqLineW      = input.int(2, "Arrow Width", minval=1, maxval=4, group=grpLQ)
+lqLabelSz    = input.string("Small", "Label Size", options=["Small","Medium","Large"], group=grpLQ)
+lqMaxAge     = input.int(150, "Max Lookback (Bars)", minval=20, maxval=500, group=grpLQ)
+lqAtrMult    = input.float(0.1, "Invalidation Buffer (ATR %)", minval=0.0, maxval=1.0, step=0.05, group=grpLQ)
+lq_sz        = lqLabelSz == "Small" ? size.small : lqLabelSz == "Medium" ? size.normal : size.large
+
+grpEQ      = "Equal Highs / Lows"
+showEQ     = input.bool(true,  "Show EQH / EQL",         group=grpEQ)
+eqAtrMult  = input.float(0.5,  "Sensitivity (ATR mult)", group=grpEQ, minval=0.1, maxval=3.0, step=0.1)
+eqHighCol  = input.color(color.new(#f0c040, 0), "EQH Color", group=grpEQ, inline="eq1")
+eqLowCol   = input.color(color.new(#4fc3f7, 0), "EQL Color", group=grpEQ, inline="eq1")
+eqLineW    = input.int(1, "Line Width", minval=1, maxval=3, group=grpEQ)
+eqLblSz    = input.string("Small", "Label Size", options=["Small","Medium","Large"], group=grpEQ)
+eqLookback = input.int(100, "Max Lookback (Bars)", minval=20, maxval=300, group=grpEQ)
+
+var Show_Daily_Levels  = input.bool(defval=false, title='Daily',   group='Key Levels', inline='Daily')
+Color_Daily_Levels     = input.color(title='', defval=#08bcd4,     group='Key Levels', inline='Daily')
+Style_Daily_Levels     = input.string('Dotted', '  Style', ['Solid','Dashed','Dotted'], group="Key Levels", inline="Daily")
+Text_Daily_Levels      = input.bool(defval=false, title='Shorten', group='Key Levels', inline='Daily')
+var Show_Monday_Levels = input.bool(defval=false, title='Monday',  group='Key Levels', inline='Monday')
+Color_Monday_Levels    = input.color(title='', defval=color.white, group='Key Levels', inline='Monday')
+Style_Monday_Levels    = input.string('Dotted', '  Style', ['Solid','Dashed','Dotted'], group="Key Levels", inline="Monday")
+Text_Monday_Levels     = input.bool(defval=false, title='Shorten', group='Key Levels', inline='Monday')
+var Show_Weekly_Levels = input.bool(defval=false, title='Weekly',  group='Key Levels', inline='Weekly')
+WeeklyColor            = input.color(title='', defval=#fffcbc,     group='Key Levels', inline='Weekly')
+Weekly_style           = input.string('Dotted', '  Style', ['Solid','Dashed','Dotted'], group="Key Levels", inline="Weekly")
+WeeklyTextType         = input.bool(defval=false, title='Shorten', group='Key Levels', inline='Weekly')
+labelsize = input.string(defval='Medium', title='Text Size', options=['Small','Medium','Large'], group="Key Levels", inline='H')
+
+var pdhtext   = Text_Daily_Levels  ? 'PDH'    : 'Prev Day High'
+var pdltext   = Text_Daily_Levels  ? 'PDL'    : 'Prev Day Low'
+var dotext    = Text_Daily_Levels  ? 'DO'     : 'Daily Open'
+var pwhtext   = WeeklyTextType     ? 'PWH'    : 'Prev Week High'
+var pwltext   = WeeklyTextType     ? 'PWL'    : 'Prev Week Low'
+var wotext    = WeeklyTextType     ? 'WO'     : 'Weekly Open'
+var pmonhtext = Text_Monday_Levels ? 'MDAY-H' : 'Monday High'
+var pmonltext = Text_Monday_Levels ? 'MDAY-L' : 'Monday Low'
+var pmonmtext = Text_Monday_Levels ? 'MDAY-M' : 'Monday Mid'
+
+displayStyle  = 'Standard'
+distanceright = 25
+linestyle     = 'Solid'
+var untested_monday = false
+
+grpATR    = "ATR Dashboard"
+atrLen    = input.int(14, "ATR Length",   group=grpATR)
+decimals  = input.int(1,  "Decimals",     group=grpATR, minval=0, maxval=5)
+fontColor = input.color(color.white, "Font Color", group=grpATR)
+posInput  = input.string("Bottom Center", "Position", group=grpATR,
+     options=["Top Left","Top Center","Top Right","Bottom Left","Bottom Center","Bottom Right"])
+
+// ── HTF Context inputs ───────────────────────────────────────────────────────
+grpCtx        = "HTF Context"
+showCtxBg     = input.bool(true,  "Show Background",   group=grpCtx)
+ctxTF         = input.timeframe("D", "Timeframe",       group=grpCtx)
+trendPeriod   = input.int(5,  "Trend Pivot Period",      group=grpCtx, minval=1, maxval=20)
+ctxPremCol    = input.color(color.new(color.red,  85),  "Premium Color",  group=grpCtx)
+ctxDiscCol    = input.color(color.new(color.lime, 90),  "Discount Color", group=grpCtx)
+
+
+// ── Colors - Checklist Table ───────────────────────────────────────────────────
+grpChkCol     = "Colors - Checklist Table"
+chkColBg      = input.color(color.new(color.black, 15),  "Background",  group=grpChkCol, inline="r1")
+chkColBorder  = input.color(color.new(color.gray,  70),  "Border",      group=grpChkCol, inline="r1")
+chkColHdrBg   = input.color(color.new(#b8860b,     20),  "Header BG",   group=grpChkCol, inline="r2")
+chkColTitleBg = input.color(color.new(color.black, 30),  "Title BG",    group=grpChkCol, inline="r2")
+chkColTitleTx = input.color(color.white,                 "Title Text",  group=grpChkCol, inline="r3")
+chkColHdrTx   = input.color(color.new(#f0c040,     0),   "Header Text", group=grpChkCol, inline="r3")
+chkColBodyTx  = input.color(color.white,                 "Body Text",   group=grpChkCol, inline="r4")
+chkColChecked = input.color(color.new(color.green, 50),  "Checked",     group=grpChkCol, inline="r4")
+chkColUnchkd  = input.color(color.new(color.red,   50),  "Unchecked",   group=grpChkCol, inline="r5")
+chkColPrem    = input.color(color.new(color.red,   20),  "Premium",     group=grpChkCol, inline="r5")
+chkColDisc    = input.color(color.new(color.green, 20),  "Discount",    group=grpChkCol, inline="r6")
+chkColScore   = input.color(color.new(#f0c040,     0),   "Score",       group=grpChkCol, inline="r6")
+
+// ── Sessions (Asia + London) ───────────────────────────────────────────────────
+groupSess     = "Sessions (Asia + London)"
+showAsia      = input.bool(true,   "",       inline="AS",   group=groupSess)
+asiaName      = input.string("Asia", "",     inline="AS",   group=groupSess)
+asiaSessionX  = input.session("2000-0200", "Asia Session", inline="AS2", group=groupSess)
+asiaBorderCol = input.color(color.new(color.rgb(255,153,0), 0), "Asia Color", group=groupSess)
+
+showLondon      = input.bool(true,     "",         inline="LDN",  group=groupSess)
+londonName      = input.string("London", "",       inline="LDN",  group=groupSess)
+londonSessionX  = input.session("0300-0600", "London Session", inline="LDN2", group=groupSess)
+londonBorderCol = input.color(color.new(color.rgb(76,175,79), 0), "London Color", group=groupSess)
+
+groupSess2   = "Sessions (Settings)"
+hideWeekends = input.bool(true, "Hide Weekends",   group=groupSess2)
+sessTZ       = input.string("UTC-5", "Input Timezone", group=groupSess2)
+lookbackDays = input.int(150, "Lookback (Days)", minval=1, maxval=365, group=groupSess2)
+groupSess3   = "Sessions (Appearance)"
+borderWidth  = input.int(2,  "Line Width",    minval=1, maxval=5, group=groupSess3)
+borderStyle  = input.string("Solid",  "Line Style",   options=["Solid","Dashed","Dotted"], group=groupSess3)
+levelsStyle  = input.string("Dashed", "OC Line Style", options=["Solid","Dashed","Dotted"], group=groupSess3)
+labelSize    = input.string("Normal", "Label Size",   options=["Auto","Tiny","Small","Normal"], group=groupSess3)
+showLabels   = input.bool(true, "Session Labels",  group=groupSess3)
+sessionOC    = input.bool(true, "Open/Close Line", group=groupSess3)
+
+color transparent = #ffffff00
+
+f_bosLineStyle(s) =>
+    switch s
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+        => line.style_solid
+
+Show_MS(x, y, txt, css, dashed, down, lbl_size) =>
+    label.new(int(math.avg(x, bar_index)), y, txt, color=transparent, textcolor=css,
+         style=down ? label.style_label_down : label.style_label_up, size=lbl_size)
+    line.new(x, y, bar_index, y, color=css, style=f_bosLineStyle(bosLineStyle))
+
+lineStyle(x) =>
+    switch x
+        'Solid'  => line.style_solid
+        'Dashed' => line.style_dashed
+        'Dotted' => line.style_dotted
+
+f_check(b)    => b ? "✓" : "✗"
+f_checkBg(b)  => b ? chkColChecked : chkColUnchkd
+f_checkTxt(b) => color.white
+
+
+f_tfLabel(tf) =>
+    switch tf
+        "1"   => "1m"
+        "3"   => "3m"
+        "5"   => "5m"
+        "15"  => "15m"
+        "30"  => "30m"
+        "60"  => "1H"
+        "120" => "2H"
+        "240" => "4H"
+        "D"   => "1D"
+        "W"   => "1W"
+        "M"   => "1M"
+        => tf
+
+// ── Pivot detection (drives labels AND BOS/MSS) ───────────────────────────────
+pivot_high_found = ta.pivothigh(high, swingSize_swing, swingSize_swing)
+pivot_low_found  = ta.pivotlow(low,  swingSize_swing, swingSize_swing)
+
+var float prevHigh_s = na, var float prevLow_s = na
+var int prevHighIndex_s = na, var int prevLowIndex_s = na
+bool higher_highs = false, bool lower_highs = false
+bool higher_lows  = false, bool lower_lows  = false
+var int prevSwing_s = 0
+
+if not na(pivot_high_found)
+    higher_highs := pivot_high_found >= prevHigh_s
+    lower_highs  := not higher_highs
+    prevSwing_s  := higher_highs ? 2 : 1
+    prevHigh_s      := pivot_high_found
+    prevHighIndex_s := bar_index - swingSize_swing
+
+if not na(pivot_low_found)
+    higher_lows := pivot_low_found >= prevLow_s
+    lower_lows  := not higher_lows
+    prevSwing_s := higher_lows ? -1 : -2
+    prevLow_s      := pivot_low_found
+    prevLowIndex_s := bar_index - swingSize_swing
+
+showLbl = swingDispMode == "Labels" or swingDispMode == "Both"
+showTri = swingDispMode == "Triangles" or swingDispMode == "Both"
+
+if higher_highs and showSwing
+    if showLbl
+        label.new(bar_index - swingSize_swing, pivot_high_found, 'HH', color=CLEAR, style=label.style_label_down, textcolor=swingColor, size=label_size_buysell_s)
+if lower_highs and showSwing
+    if showLbl
+        label.new(bar_index - swingSize_swing, pivot_high_found, 'LH', color=CLEAR, style=label.style_label_down, textcolor=swingColor, size=label_size_buysell_s)
+if higher_lows and showSwing
+    if showLbl
+        label.new(bar_index - swingSize_swing, pivot_low_found, 'HL', color=CLEAR, style=label.style_label_up, textcolor=swingColor, size=label_size_buysell_s)
+if lower_lows and showSwing
+    if showLbl
+        label.new(bar_index - swingSize_swing, pivot_low_found, 'LL', color=CLEAR, style=label.style_label_up, textcolor=swingColor, size=label_size_buysell_s)
+
+plotshape(showSwing and showTri and not na(pivot_high_found), location=location.abovebar, style=shape.triangledown, color=triangleColor, size=size.auto, offset=-swingSize_swing)
+plotshape(showSwing and showTri and not na(pivot_low_found),  location=location.belowbar, style=shape.triangleup,   color=triangleColor, size=size.auto, offset=-swingSize_swing)
+
+// ── Equal Highs / Lows ────────────────────────────────────────────────────────
+var float[] eq_ph_p = array.new_float()
+var int[]   eq_ph_x = array.new_int()
+var float[] eq_pl_p = array.new_float()
+var int[]   eq_pl_x = array.new_int()
+
+var array<line>  eq_drawn_lines  = array.new<line>()
+var array<label> eq_drawn_labels = array.new<label>()
+var array<float> eq_drawn_lvls   = array.new_float()
+var array<int>   eq_drawn_dirs   = array.new_int()
+
+if showEQ
+    eq_sz  = eqLblSz == "Small" ? size.small : eqLblSz == "Medium" ? size.normal : size.large
+    eq_buf = ta.atr(atrLen) * eqAtrMult
+    newBar = bar_index - swingSize_swing
+
+    // Prune expired pivots
+    if array.size(eq_ph_x) > 0
+        for i = array.size(eq_ph_x) - 1 to 0
+            if bar_index - array.get(eq_ph_x, i) > eqLookback
+                array.remove(eq_ph_p, i), array.remove(eq_ph_x, i)
+    if array.size(eq_pl_x) > 0
+        for i = array.size(eq_pl_x) - 1 to 0
+            if bar_index - array.get(eq_pl_x, i) > eqLookback
+                array.remove(eq_pl_p, i), array.remove(eq_pl_x, i)
+
+    if not na(pivot_high_found)
+        float bestDiff = eq_buf
+        int   bestIdx  = -1
+        if array.size(eq_ph_p) > 0
+            for i = 0 to array.size(eq_ph_p) - 1
+                diff = math.abs(pivot_high_found - array.get(eq_ph_p, i))
+                if diff < bestDiff
+                    bestDiff := diff
+                    bestIdx  := i
+        if bestIdx >= 0
+            sP       = array.get(eq_ph_p, bestIdx)
+            sX       = array.get(eq_ph_x, bestIdx)
+            midLvl   = (pivot_high_found + sP) / 2.0
+            bool eqh_ok  = true
+            startOff = swingSize_swing + 1
+            endOff   = bar_index - sX - 1
+            if startOff <= endOff
+                for off = startOff to endOff
+                    if high[off] > midLvl
+                        eqh_ok := false
+                        break
+            if eqh_ok
+                _eqln  = line.new(sX, midLvl, newBar, midLvl, color=eqHighCol, width=eqLineW, style=line.style_dashed)
+                _eqlbl = label.new(newBar, midLvl, "EQH", color=CLEAR, textcolor=eqHighCol, style=label.style_label_down, size=eq_sz)
+                array.push(eq_drawn_lines,  _eqln)
+                array.push(eq_drawn_labels, _eqlbl)
+                array.push(eq_drawn_lvls,   midLvl)
+                array.push(eq_drawn_dirs,   1)
+        array.push(eq_ph_p, pivot_high_found)
+        array.push(eq_ph_x, newBar)
+        if array.size(eq_ph_p) > 5
+            array.shift(eq_ph_p), array.shift(eq_ph_x)
+
+    if not na(pivot_low_found)
+        float bestDiff = eq_buf
+        int   bestIdx  = -1
+        if array.size(eq_pl_p) > 0
+            for i = 0 to array.size(eq_pl_p) - 1
+                diff = math.abs(pivot_low_found - array.get(eq_pl_p, i))
+                if diff < bestDiff
+                    bestDiff := diff
+                    bestIdx  := i
+        if bestIdx >= 0
+            sP       = array.get(eq_pl_p, bestIdx)
+            sX       = array.get(eq_pl_x, bestIdx)
+            midLvl   = (pivot_low_found + sP) / 2.0
+            bool eql_ok  = true
+            startOff = swingSize_swing + 1
+            endOff   = bar_index - sX - 1
+            if startOff <= endOff
+                for off = startOff to endOff
+                    if low[off] < midLvl
+                        eql_ok := false
+                        break
+            if eql_ok
+                _eqln  = line.new(sX, midLvl, newBar, midLvl, color=eqLowCol, width=eqLineW, style=line.style_dashed)
+                _eqlbl = label.new(newBar, midLvl, "EQL", color=CLEAR, textcolor=eqLowCol, style=label.style_label_up, size=eq_sz)
+                array.push(eq_drawn_lines,  _eqln)
+                array.push(eq_drawn_labels, _eqlbl)
+                array.push(eq_drawn_lvls,   midLvl)
+                array.push(eq_drawn_dirs,   -1)
+        array.push(eq_pl_p, pivot_low_found)
+        array.push(eq_pl_x, newBar)
+        if array.size(eq_pl_p) > 5
+            array.shift(eq_pl_p), array.shift(eq_pl_x)
+
+// Invalidate swept EQH/EQL levels
+if array.size(eq_drawn_lines) > 0
+    var array<int> eq_inv = array.new_int()
+    array.clear(eq_inv)
+    for i = array.size(eq_drawn_lines) - 1 to 0
+        lvl = array.get(eq_drawn_lvls, i)
+        dir = array.get(eq_drawn_dirs, i)
+        if (dir == 1 and high >= lvl) or (dir == -1 and low <= lvl)
+            line.delete(array.get(eq_drawn_lines,  i))
+            label.delete(array.get(eq_drawn_labels, i))
+            array.push(eq_inv, i)
+    if array.size(eq_inv) > 0
+        array.sort(eq_inv, order.descending)
+        for j = 0 to array.size(eq_inv) - 1
+            ri = array.get(eq_inv, j)
+            array.remove(eq_drawn_lines,  ri)
+            array.remove(eq_drawn_labels, ri)
+            array.remove(eq_drawn_lvls,   ri)
+            array.remove(eq_drawn_dirs,   ri)
+
+// ── BOS / MSS ─────────────────────────────────────────────────────────────────
+var float ms_y_up = na, var int ms_x_up = 0, var int ms_confirm_up = 0
+var float ms_y_dn = na, var int ms_x_dn = 0, var int ms_confirm_dn = 0
+var bool  watch_up = false, var bool watch_dn = false
+var int   t_MS = 0
+var bullish_col_MSS = bosColor1
+var bearish_col_MSS = bosColor2
+
+if not na(pivot_high_found)
+    ms_y_up       := pivot_high_found
+    ms_x_up       := bar_index - swingSize_swing
+    ms_confirm_up := bar_index
+    watch_up      := true
+
+if not na(pivot_low_found)
+    ms_y_dn       := pivot_low_found
+    ms_x_dn       := bar_index - swingSize_swing
+    ms_confirm_dn := bar_index
+    watch_dn      := true
+
+bull_mss = false, bull_bos = false
+bear_mss = false, bear_bos = false
+
+if watch_up and not na(ms_y_up) and bar_index > ms_confirm_up and ta.crossover(close, ms_y_up)
+    bool MSS = t_MS < 0
+    watch_up := false
+    t_MS := 1
+    bull_mss := MSS
+    bull_bos := not MSS
+    if showms
+        Show_MS(ms_x_up, ms_y_up, MSS ? 'MSS' : 'BOS', bullish_col_MSS, false, true, label_size_buysell)
+
+if watch_dn and not na(ms_y_dn) and bar_index > ms_confirm_dn and ta.crossunder(close, ms_y_dn)
+    bool MSS = t_MS > 0
+    watch_dn := false
+    t_MS := -1
+    bear_mss := MSS
+    bear_bos := not MSS
+    if showms
+        Show_MS(ms_x_dn, ms_y_dn, MSS ? 'MSS' : 'BOS', bearish_col_MSS, false, false, label_size_buysell)
+
+alertcondition(bull_mss, "Bullish MSS", 'Bullish MSS')
+alertcondition(bear_mss, "Bearish MSS", 'Bearish MSS')
+alertcondition(bull_bos, "Bullish BOS", 'Bullish BOS')
+alertcondition(bear_bos, "Bearish BOS", 'Bearish BOS')
+
+
+// ── Liquidity Grab tracking arrays ────────────────────────────────────────────
+var float[]  _ph_p = array.new_float()
+var string[] _ph_t = array.new_string()
+var float[]  _pl_p = array.new_float()
+var string[] _pl_t = array.new_string()
+
+var array<float> lq_lows_p  = array.new_float()
+var array<int>   lq_lows_x  = array.new_int()
+var array<float> lq_highs_p = array.new_float()
+var array<int>   lq_highs_x = array.new_int()
+var array<int>   lq_remove  = array.new_int()
+
+var array<line>  lq_drawn_lines  = array.new<line>()
+var array<label> lq_drawn_labels = array.new<label>()
+var array<float> lq_drawn_lvls   = array.new_float()
+var array<int>   lq_drawn_dirs   = array.new_int()
+
+if not na(pivot_high_found)
+    array.unshift(_ph_p, pivot_high_found)
+    array.unshift(_ph_t, higher_highs ? "HH" : "LH")
+    if array.size(_ph_p) > 3
+        array.pop(_ph_p), array.pop(_ph_t)
+    array.unshift(lq_highs_p, pivot_high_found)
+    array.unshift(lq_highs_x, bar_index - swingSize_swing)
+    if array.size(lq_highs_p) > 5
+        array.pop(lq_highs_p), array.pop(lq_highs_x)
+
+if not na(pivot_low_found)
+    array.unshift(_pl_p, pivot_low_found)
+    array.unshift(_pl_t, higher_lows ? "HL" : "LL")
+    if array.size(_pl_p) > 3
+        array.pop(_pl_p), array.pop(_pl_t)
+    array.unshift(lq_lows_p, pivot_low_found)
+    array.unshift(lq_lows_x, bar_index - swingSize_swing)
+    if array.size(lq_lows_p) > 5
+        array.pop(lq_lows_p), array.pop(lq_lows_x)
+
+lq_bull = false
+lq_bear = false
+
+if showLQ
+    array.clear(lq_remove)
+    float bull_lvl = na
+    int   bull_idx = na
+    if array.size(lq_lows_p) > 0
+        for i = array.size(lq_lows_p) - 1 to 0
+            lvl = array.get(lq_lows_p, i)
+            idx = array.get(lq_lows_x, i)
+            age = bar_index - idx
+            if age > lqMaxAge
+                array.push(lq_remove, i)
+            else if close < lvl
+                array.push(lq_remove, i)
+            else if age >= swingSize_swing and low < lvl
+                array.push(lq_remove, i)
+                if na(bull_lvl) or lvl < bull_lvl
+                    bull_lvl := lvl
+                    bull_idx := idx
+    if not na(bull_lvl)
+        mid_x = int(math.avg(bull_idx, bar_index))
+        _ln  = line.new(x1=bull_idx, y1=bull_lvl, x2=bar_index - 1, y2=bull_lvl,
+             color=lqArrowColor, width=lqLineW, style=line.style_arrow_right)
+        _lbl = label.new(x=mid_x, y=bull_lvl, text="LQ", color=CLEAR, textcolor=lqTextColor,
+             style=label.style_none, size=lq_sz)
+        array.push(lq_drawn_lines,  _ln)
+        array.push(lq_drawn_labels, _lbl)
+        array.push(lq_drawn_lvls,   bull_lvl)
+        array.push(lq_drawn_dirs,   1)
+        lq_bull := true
+    if array.size(lq_remove) > 0
+        array.sort(lq_remove, order.descending)
+        for j = 0 to array.size(lq_remove) - 1
+            ri = array.get(lq_remove, j)
+            if ri < array.size(lq_lows_p)
+                array.remove(lq_lows_p, ri), array.remove(lq_lows_x, ri)
+
+    array.clear(lq_remove)
+    float bear_lvl = na
+    int   bear_idx = na
+    if array.size(lq_highs_p) > 0
+        for i = array.size(lq_highs_p) - 1 to 0
+            lvl = array.get(lq_highs_p, i)
+            idx = array.get(lq_highs_x, i)
+            age = bar_index - idx
+            if age > lqMaxAge
+                array.push(lq_remove, i)
+            else if close > lvl
+                array.push(lq_remove, i)
+            else if age >= swingSize_swing and high > lvl
+                array.push(lq_remove, i)
+                if na(bear_lvl) or lvl > bear_lvl
+                    bear_lvl := lvl
+                    bear_idx := idx
+    if not na(bear_lvl)
+        mid_x = int(math.avg(bear_idx, bar_index))
+        _ln  = line.new(x1=bear_idx, y1=bear_lvl, x2=bar_index - 1, y2=bear_lvl,
+             color=lqArrowColor, width=lqLineW, style=line.style_arrow_right)
+        _lbl = label.new(x=mid_x, y=bear_lvl, text="LQ", color=CLEAR, textcolor=lqTextColor,
+             style=label.style_none, size=lq_sz)
+        array.push(lq_drawn_lines,  _ln)
+        array.push(lq_drawn_labels, _lbl)
+        array.push(lq_drawn_lvls,   bear_lvl)
+        array.push(lq_drawn_dirs,   -1)
+        lq_bear := true
+    if array.size(lq_remove) > 0
+        array.sort(lq_remove, order.descending)
+        for j = 0 to array.size(lq_remove) - 1
+            ri = array.get(lq_remove, j)
+            if ri < array.size(lq_highs_p)
+                array.remove(lq_highs_p, ri), array.remove(lq_highs_x, ri)
+
+alertcondition(lq_bull, "Bullish LQ", "Bullish Liquidity Grab (Low Swept)")
+alertcondition(lq_bear, "Bearish LQ", "Bearish Liquidity Grab (High Swept)")
+
+if array.size(lq_drawn_lines) > 0
+    var array<int> inv_remove = array.new_int()
+    array.clear(inv_remove)
+    for i = array.size(lq_drawn_lines) - 1 to 0
+        lvl = array.get(lq_drawn_lvls, i)
+        dir = array.get(lq_drawn_dirs, i)
+        atrBuf = ta.atr(atrLen) * lqAtrMult
+        if (dir == 1 and close < lvl - atrBuf) or (dir == -1 and close > lvl + atrBuf)
+            line.delete(array.get(lq_drawn_lines,  i))
+            label.delete(array.get(lq_drawn_labels, i))
+            array.push(inv_remove, i)
+    if array.size(inv_remove) > 0
+        array.sort(inv_remove, order.descending)
+        for j = 0 to array.size(inv_remove) - 1
+            ri = array.get(inv_remove, j)
+            array.remove(lq_drawn_lines,  ri)
+            array.remove(lq_drawn_labels, ri)
+            array.remove(lq_drawn_lvls,   ri)
+            array.remove(lq_drawn_dirs,   ri)
+
+// ── FVGs ──────────────────────────────────────────────────────────────────────
+var array<float> fvg_top   = array.new_float()
+var array<float> fvg_bot   = array.new_float()
+var array<int>   fvg_bull  = array.new_int()
+var array<box>   fvg_boxes = array.new_box()
+
+bullFVG = high[2] < low[0]
+bearFVG = low[2]  > high[0]
+
+if showFVG and bullFVG
+    _top = low[0]
+    _bot = high[2]
+    _b   = box.new(left=bar_index - 2, top=_top, right=bar_index + 1, bottom=_bot,
+         border_color=fvgBullCol, border_width=fvgBorderW, bgcolor=fvgFillCol, extend=extend.none)
+    array.push(fvg_top, _top), array.push(fvg_bot, _bot), array.push(fvg_bull, 1), array.push(fvg_boxes, _b)
+
+if showFVG and bearFVG
+    _top = low[2]
+    _bot = high[0]
+    _b   = box.new(left=bar_index - 2, top=_top, right=bar_index + 1, bottom=_bot,
+         border_color=fvgBearCol, border_width=fvgBorderW, bgcolor=fvgFillCol, extend=extend.none)
+    array.push(fvg_top, _top), array.push(fvg_bot, _bot), array.push(fvg_bull, -1), array.push(fvg_boxes, _b)
+
+if showFVG and array.size(fvg_boxes) > 0
+    var array<int> to_delete = array.new_int()
+    array.clear(to_delete)
+    int fvg_count = array.size(fvg_boxes)
+    if fvg_count > 0
+        for i = fvg_count - 1 to 0
+            _box  = array.get(fvg_boxes, i)
+            _top  = array.get(fvg_top,   i)
+            _bot  = array.get(fvg_bot,   i)
+            _bull = array.get(fvg_bull,  i)
+            if _bull == 1
+                if low <= _bot
+                    box.delete(_box), array.push(to_delete, i)
+                else if low < _top
+                    box.set_top(_box, math.min(_top, low))
+            else
+                if high >= _top
+                    box.delete(_box), array.push(to_delete, i)
+                else if high > _bot
+                    box.set_bottom(_box, math.max(_bot, high))
+    int del_count = array.size(to_delete)
+    if del_count > 0
+        array.sort(to_delete, order.descending)
+        for j = 0 to del_count - 1
+            idx = array.get(to_delete, j)
+            if idx < array.size(fvg_top)
+                array.remove(fvg_top, idx)
+            if idx < array.size(fvg_bot)
+                array.remove(fvg_bot, idx)
+            if idx < array.size(fvg_bull)
+                array.remove(fvg_bull, idx)
+            if idx < array.size(fvg_boxes)
+                array.remove(fvg_boxes, idx)
+
+// ── Key Levels ─────────────────────────────────────────────────────────────────
+var monday_time = time
+var monday_high = high
+var monday_low  = low
+
+cdailyh_open = request.security(syminfo.tickerid, 'D', high, lookahead=barmerge.lookahead_on)
+cdailyl_open = request.security(syminfo.tickerid, 'D', low,  lookahead=barmerge.lookahead_on)
+[daily_time,    daily_open]    = request.security(syminfo.tickerid, 'D',   [time,    open],    lookahead=barmerge.lookahead_on)
+[dailyh_time,   dailyh_open]   = request.security(syminfo.tickerid, 'D',   [time[1], high[1]], lookahead=barmerge.lookahead_on)
+[dailyl_time,   dailyl_open]   = request.security(syminfo.tickerid, 'D',   [time[1], low[1]],  lookahead=barmerge.lookahead_on)
+[weekly_time,   weekly_open]   = request.security(syminfo.tickerid, 'W',   [time,    open],    lookahead=barmerge.lookahead_on)
+[weeklyh_time,  weeklyh_open]  = request.security(syminfo.tickerid, 'W',   [time[1], high[1]], lookahead=barmerge.lookahead_on)
+[weeklyl_time,  weeklyl_open]  = request.security(syminfo.tickerid, 'W',   [time[1], low[1]],  lookahead=barmerge.lookahead_on)
+[monthly_time,  monthly_open]  = request.security(syminfo.tickerid, 'M',   [time,    open],    lookahead=barmerge.lookahead_on)
+[monthlyh_time, monthlyh_open] = request.security(syminfo.tickerid, 'M',   [time[1], high[1]], lookahead=barmerge.lookahead_on)
+[monthlyl_time, monthlyl_open] = request.security(syminfo.tickerid, 'M',   [time[1], low[1]],  lookahead=barmerge.lookahead_on)
+[intra_time,    intra_open]    = request.security(syminfo.tickerid, '240', [time,    open],    lookahead=barmerge.lookahead_on)
+[intrah_time,   intrah_open]   = request.security(syminfo.tickerid, '240', [time[1], high[1]], lookahead=barmerge.lookahead_on)
+[intral_time,   intral_open]   = request.security(syminfo.tickerid, '240', [time[1], low[1]],  lookahead=barmerge.lookahead_on)
+[quarterly_time,  quarterly_open]  = request.security(syminfo.tickerid, '3M',  [time,    open],    lookahead=barmerge.lookahead_on)
+[quarterlyh_time, quarterlyh_open] = request.security(syminfo.tickerid, '3M',  [time[1], high[1]], lookahead=barmerge.lookahead_on)
+[quarterlyl_time, quarterlyl_open] = request.security(syminfo.tickerid, '3M',  [time[1], low[1]],  lookahead=barmerge.lookahead_on)
+[yearly_time,  yearly_open]  = request.security(syminfo.tickerid, '12M', [time,    open],    lookahead=barmerge.lookahead_on)
+[yearlyh_time, yearlyh_open] = request.security(syminfo.tickerid, '12M', [time,    high],    lookahead=barmerge.lookahead_on)
+[yearlyl_time, yearlyl_open] = request.security(syminfo.tickerid, '12M', [time,    low],     lookahead=barmerge.lookahead_on)
+
+// ── Daily Context — premium/discount + trend ──────────────────────────────────
+ctxPH = request.security(syminfo.tickerid, ctxTF, ta.pivothigh(high, trendPeriod, trendPeriod), lookahead=barmerge.lookahead_on)
+ctxPL = request.security(syminfo.tickerid, ctxTF, ta.pivotlow(low,  trendPeriod, trendPeriod),  lookahead=barmerge.lookahead_on)
+
+// Track last 3 confirmed pivot highs on ctxTF (H1=oldest, H3=newest)
+var float tH1 = na, var float tH2 = na, var float tH3 = na
+if not na(ctxPH) and (na(tH3) or ctxPH != tH3)
+    tH1 := tH2
+    tH2 := tH3
+    tH3 := ctxPH
+
+// Track last 3 confirmed pivot lows on ctxTF (L1=oldest, L3=newest)
+var float tL1 = na, var float tL2 = na, var float tL3 = na
+if not na(ctxPL) and (na(tL3) or ctxPL != tL3)
+    tL1 := tL2
+    tL2 := tL3
+    tL3 := ctxPL
+
+// Matching leg: most recent adjacent H-L or L-H pair
+var float legH = na, var float legL = na
+var float pendH = na, var float pendL = na
+
+if not na(ctxPH) and (na(pendH) or ctxPH != pendH)
+    pendH := ctxPH
+    if not na(pendL)
+        legH := ctxPH
+        legL := pendL
+
+if not na(ctxPL) and (na(pendL) or ctxPL != pendL)
+    pendL := ctxPL
+    if not na(pendH)
+        legH := pendH
+        legL := ctxPL
+
+ctxLegRng     = not na(legH) and not na(legL) and legH > legL ? legH - legL : na
+ctxLocPct     = not na(ctxLegRng) ? (close - legL) / ctxLegRng * 100 : na
+ctxIsPremium  = not na(ctxLocPct) and ctxLocPct >= 60
+ctxIsDiscount = not na(ctxLocPct) and ctxLocPct < 40
+autoDir = not na(ctxLocPct) ? (ctxLocPct > 50 ? -1 : 1) : 0
+legMid = not na(legH) and not na(legL) ? (legH + legL) / 2.0 : na
+
+// Sequential comparison: H2 vs H1 then H3 vs H2 / L2 vs L1 then L3 vs L2
+bool trendBull = not na(tL1) and not na(tL2) and not na(tL3) and tL2 > tL1 and tL3 > tL2
+bool trendBear = not na(tH1) and not na(tH2) and not na(tH3) and tH2 < tH1 and tH3 < tH2
+ctxTrend   = trendBull and not trendBear ? "Bullish" : trendBear and not trendBull ? "Bearish" : "Sideways"
+ctxTrendBg = chkColTitleBg
+ctxTrendTx = ctxTrend == "Bullish" ? color.lime : ctxTrend == "Bearish" ? color.red : color.white
+
+bgcolor(showCtxBg and ctxIsPremium  ? ctxPremCol : na)
+bgcolor(showCtxBg and ctxIsDiscount ? ctxDiscCol : na)
+
+if weekly_time != weekly_time[1]
+    untested_monday := false
+if Show_Monday_Levels == true and untested_monday == false
+    untested_monday := true
+    monday_time := daily_time
+    monday_high := cdailyh_open
+    monday_low  := cdailyl_open
+
+linewidthint = 1
+fontsize = size.small
+if labelsize == 'Medium'
+    fontsize := size.normal
+if labelsize == 'Large'
+    fontsize := size.large
+
+linestyles = line.style_solid
+if linestyle == 'Dashed'
+    linestyles := line.style_dashed
+if linestyle == 'Dotted'
+    linestyles := line.style_dotted
+
+var DEFAULT_LABEL_SIZE  = fontsize
+var DEFAULT_LABEL_STYLE = label.style_none
+var Rigth_Def           = distanceright
+var arr_price           = array.new_float(0)
+var arr_label           = array.new_label(0)
+
+Combine_Levels(arr_price, arr_label, currentprice, currentlabel, currentcolor) =>
+    if array.includes(arr_price, currentprice)
+        whichindex = array.indexof(arr_price, currentprice)
+        labelhold  = array.get(arr_label, whichindex)
+        label.set_text(labelhold, label.get_text(currentlabel) + ' / ' + label.get_text(labelhold))
+        label.set_text(currentlabel, '')
+        label.set_textcolor(labelhold, currentcolor)
+    else
+        array.push(arr_price, currentprice)
+        array.push(arr_label, currentlabel)
+
+extend_to_current(bars) =>
+    timenow + (time - time[1]) * bars
+
+if barstate.islast
+    arr_price := array.new_float(0)
+    arr_label := array.new_label(0)
+    if Show_Monday_Levels
+        monday_limit_right  = extend_to_current(Rigth_Def)
+        mondaym_limit_right = extend_to_current(Rigth_Def)
+        mondaym_open        = (monday_high + monday_low) / 2
+        var monday_line      = line.new(x1=monday_time, x2=monday_limit_right,  y1=monday_high,  y2=monday_high,  color=Color_Monday_Levels, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Style_Monday_Levels))
+        var monday_label     = label.new(x=monday_limit_right,  y=monday_high,  text=pmonhtext,  style=DEFAULT_LABEL_STYLE, textcolor=Color_Monday_Levels, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        var mondaym_line     = line.new(x1=monday_time, x2=monday_limit_right, y1=mondaym_open, y2=mondaym_open, color=Color_Monday_Levels, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Style_Monday_Levels))
+        var mondaym_label    = label.new(x=monday_limit_right, y=mondaym_open, text=pmonmtext, style=DEFAULT_LABEL_STYLE, textcolor=Color_Monday_Levels, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        var monday_low_line  = line.new(x1=monday_time, x2=monday_limit_right,  y1=monday_low,   y2=monday_low,   color=Color_Monday_Levels, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Style_Monday_Levels))
+        var monday_low_label = label.new(x=monday_limit_right,  y=monday_low,   text=pmonltext,  style=DEFAULT_LABEL_STYLE, textcolor=Color_Monday_Levels, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        line.set_x1(monday_line, monday_time), line.set_x2(monday_line, monday_limit_right), line.set_y1(monday_line, monday_high), line.set_y2(monday_line, monday_high)
+        label.set_x(monday_label, monday_limit_right), label.set_y(monday_label, monday_high), label.set_text(monday_label, pmonhtext)
+        line.set_x1(monday_low_line, monday_time), line.set_x2(monday_low_line, monday_limit_right), line.set_y1(monday_low_line, monday_low), line.set_y2(monday_low_line, monday_low)
+        label.set_x(monday_low_label, monday_limit_right), label.set_y(monday_low_label, monday_low), label.set_text(monday_low_label, pmonltext)
+        line.set_x1(mondaym_line, monday_time), line.set_x2(mondaym_line, monday_limit_right), line.set_y1(mondaym_line, mondaym_open), line.set_y2(mondaym_line, mondaym_open)
+        label.set_x(mondaym_label, monday_limit_right), label.set_y(mondaym_label, mondaym_open), label.set_text(mondaym_label, pmonmtext)
+        Combine_Levels(arr_price, arr_label, monday_high, monday_label, Color_Monday_Levels)
+        Combine_Levels(arr_price, arr_label, monday_low,  monday_low_label, Color_Monday_Levels)
+        Combine_Levels(arr_price, arr_label, mondaym_open, mondaym_label, Color_Monday_Levels)
+    if Show_Daily_Levels
+        daily_limit_right  = extend_to_current(Rigth_Def)
+        dailyh_limit_right = extend_to_current(Rigth_Def)
+        dailyl_limit_right = extend_to_current(Rigth_Def)
+        var daily_line   = line.new(x1=daily_time,  x2=daily_limit_right,  y1=daily_open,  y2=daily_open,  color=Color_Daily_Levels, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Style_Daily_Levels))
+        var daily_label  = label.new(x=daily_limit_right,  y=daily_open,  text=dotext,   style=DEFAULT_LABEL_STYLE, textcolor=Color_Daily_Levels, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        var dailyh_line  = line.new(x1=dailyh_time, x2=dailyh_limit_right, y1=dailyh_open, y2=dailyh_open, color=Color_Daily_Levels, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Style_Daily_Levels))
+        var dailyh_label = label.new(x=dailyh_limit_right, y=dailyh_open, text=pdhtext,  style=DEFAULT_LABEL_STYLE, textcolor=Color_Daily_Levels, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        var dailyl_line  = line.new(x1=dailyl_time, x2=dailyl_limit_right, y1=dailyl_open, y2=dailyl_open, color=Color_Daily_Levels, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Style_Daily_Levels))
+        var dailyl_label = label.new(x=dailyl_limit_right, y=dailyl_open, text=pdltext,  style=DEFAULT_LABEL_STYLE, textcolor=Color_Daily_Levels, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        line.set_x1(daily_line, daily_time), line.set_x2(daily_line, daily_limit_right), line.set_y1(daily_line, daily_open), line.set_y2(daily_line, daily_open)
+        label.set_x(daily_label, daily_limit_right), label.set_y(daily_label, daily_open), label.set_text(daily_label, dotext)
+        line.set_x1(dailyh_line, dailyh_time), line.set_x2(dailyh_line, dailyh_limit_right), line.set_y1(dailyh_line, dailyh_open), line.set_y2(dailyh_line, dailyh_open)
+        label.set_x(dailyh_label, dailyh_limit_right), label.set_y(dailyh_label, dailyh_open), label.set_text(dailyh_label, pdhtext)
+        line.set_x1(dailyl_line, dailyl_time), line.set_x2(dailyl_line, dailyl_limit_right), line.set_y1(dailyl_line, dailyl_open), line.set_y2(dailyl_line, dailyl_open)
+        label.set_x(dailyl_label, dailyl_limit_right), label.set_y(dailyl_label, dailyl_open), label.set_text(dailyl_label, pdltext)
+        Combine_Levels(arr_price, arr_label, daily_open,  daily_label,  Color_Daily_Levels)
+        Combine_Levels(arr_price, arr_label, dailyh_open, dailyh_label, Color_Daily_Levels)
+        Combine_Levels(arr_price, arr_label, dailyl_open, dailyl_label, Color_Daily_Levels)
+    if Show_Weekly_Levels
+        weekly_limit_right  = extend_to_current(Rigth_Def)
+        weeklyh_limit_right = extend_to_current(Rigth_Def)
+        weeklyl_limit_right = extend_to_current(Rigth_Def)
+        cweekly_time = weekly_time
+        var weekly_line   = line.new(x1=cweekly_time, x2=weekly_limit_right,  y1=weekly_open,  y2=weekly_open,  color=WeeklyColor, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Weekly_style))
+        var weekly_label  = label.new(x=weekly_limit_right,  y=weekly_open,  text=wotext,  style=DEFAULT_LABEL_STYLE, textcolor=WeeklyColor, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        var weeklyh_line  = line.new(x1=weeklyh_time, x2=weeklyh_limit_right, y1=weeklyh_open, y2=weeklyh_open, color=WeeklyColor, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Weekly_style))
+        var weeklyh_label = label.new(x=weeklyh_limit_right, y=weeklyh_open, text=pwhtext, style=DEFAULT_LABEL_STYLE, textcolor=WeeklyColor, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        var weeklyl_line  = line.new(x1=weeklyl_time, x2=weeklyl_limit_right, y1=weeklyl_open, y2=weeklyl_open, color=WeeklyColor, width=linewidthint, xloc=xloc.bar_time, style=lineStyle(Weekly_style))
+        var weeklyl_label = label.new(x=weeklyl_limit_right, y=weeklyl_open, text=pwltext, style=DEFAULT_LABEL_STYLE, textcolor=WeeklyColor, size=DEFAULT_LABEL_SIZE, xloc=xloc.bar_time)
+        line.set_x1(weekly_line,  cweekly_time),  line.set_x2(weekly_line,  weekly_limit_right),  line.set_y1(weekly_line,  weekly_open),  line.set_y2(weekly_line,  weekly_open)
+        label.set_x(weekly_label,  weekly_limit_right),  label.set_y(weekly_label,  weekly_open),  label.set_text(weekly_label, wotext)
+        line.set_x1(weeklyh_line, weeklyh_time),  line.set_x2(weeklyh_line, weeklyh_limit_right), line.set_y1(weeklyh_line, weeklyh_open), line.set_y2(weeklyh_line, weeklyh_open)
+        label.set_x(weeklyh_label, weeklyh_limit_right), label.set_y(weeklyh_label, weeklyh_open), label.set_text(weeklyh_label, pwhtext)
+        line.set_x1(weeklyl_line, weeklyl_time),  line.set_x2(weeklyl_line, weeklyl_limit_right), line.set_y1(weeklyl_line, weeklyl_open), line.set_y2(weeklyl_line, weeklyl_open)
+        label.set_x(weeklyl_label, weeklyl_limit_right), label.set_y(weeklyl_label, weeklyl_open), label.set_text(weeklyl_label, pwltext)
+        Combine_Levels(arr_price, arr_label, weekly_open,  weekly_label,  WeeklyColor)
+        Combine_Levels(arr_price, arr_label, weeklyh_open, weeklyh_label, WeeklyColor)
+        Combine_Levels(arr_price, arr_label, weeklyl_open, weeklyl_label, WeeklyColor)
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+sessLineStyle(x) =>
+    switch x
+        "Solid"  => line.style_solid
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+
+sessLabelStyle(x) =>
+    switch x
+        "Auto"  => size.auto
+        "Tiny"  => size.tiny
+        "Small" => size.small
+        => size.normal
+
+asiaSession   = hideWeekends ? asiaSessionX   + ":123456" : asiaSessionX   + ":1234567"
+londonSession = hideWeekends ? londonSessionX + ":123456" : londonSessionX + ":1234567"
+
+MSPD        = 24 * 60 * 60 * 1000
+lastBarDate = timestamp(year(timenow), month(timenow), dayofmonth(timenow), hour(timenow), minute(timenow), second(timenow))
+thisBarDate = timestamp(year, month, dayofmonth, hour, minute, second)
+daysLeft    = math.abs(math.floor((lastBarDate - thisBarDate) / MSPD))
+inRangeSess = daysLeft < lookbackDays
+
+inAsia   = timeframe.isintraday and not na(time(timeframe.period, asiaSession,   sessTZ))
+inLondon = timeframe.isintraday and not na(time(timeframe.period, londonSession, sessTZ))
+asiaStart   = inAsia   and not inAsia[1]
+londonStart = inLondon and not inLondon[1]
+
+var float asiaHigh = na, var float asiaLow = na, var float asiaOpen = na
+var float ldnHigh  = na, var float ldnLow  = na, var float ldnOpen  = na
+var int   asiaStartBar = na, var int ldnStartBar = na
+var line  asiaLineH = na, var line asiaLineL = na, var label asiaLbl = na, var line asiaOC = na
+var line  ldnLineH  = na, var line ldnLineL  = na, var label ldnLbl  = na, var line ldnOC  = na
+
+if asiaStart
+    asiaHigh     := high
+    asiaLow      := low
+    asiaOpen     := open
+    asiaStartBar := bar_index
+if londonStart
+    ldnHigh     := high
+    ldnLow      := low
+    ldnOpen     := open
+    ldnStartBar := bar_index
+
+// ── Session line creation (high + low lines only, no side borders) ─────────────
+if asiaStart and showAsia and inRangeSess
+    asiaLineH := line.new(x1=bar_index, y1=high, x2=bar_index, y2=high, color=asiaBorderCol, width=borderWidth, style=sessLineStyle(borderStyle))
+    asiaLineL := line.new(x1=bar_index, y1=low,  x2=bar_index, y2=low,  color=asiaBorderCol, width=borderWidth, style=sessLineStyle(borderStyle))
+    asiaLbl   := showLabels ? label.new(x=bar_index, y=high, text=asiaName, textcolor=asiaBorderCol, color=color.rgb(0,0,0,100), style=label.style_label_down, size=sessLabelStyle(labelSize)) : na
+    asiaOC    := sessionOC  ? line.new(x1=bar_index, y1=asiaOpen, x2=bar_index, y2=asiaOpen, style=sessLineStyle(levelsStyle), color=color.new(asiaBorderCol, 50)) : na
+
+if londonStart and showLondon and inRangeSess
+    ldnLineH := line.new(x1=bar_index, y1=high, x2=bar_index, y2=high, color=londonBorderCol, width=borderWidth, style=sessLineStyle(borderStyle))
+    ldnLineL := line.new(x1=bar_index, y1=low,  x2=bar_index, y2=low,  color=londonBorderCol, width=borderWidth, style=sessLineStyle(borderStyle))
+    ldnLbl   := showLabels ? label.new(x=bar_index, y=high, text=londonName, textcolor=londonBorderCol, color=color.rgb(0,0,0,100), style=label.style_label_down, size=sessLabelStyle(labelSize)) : na
+    ldnOC    := sessionOC  ? line.new(x1=bar_index, y1=ldnOpen, x2=bar_index, y2=ldnOpen, style=sessLineStyle(levelsStyle), color=color.new(londonBorderCol, 50)) : na
+
+// ── Live update: stretch lines across session as H/L expand ───────────────────
+if inAsia and showAsia and inRangeSess and not na(asiaLineH)
+    asiaHigh := math.max(asiaHigh, high)
+    asiaLow  := math.min(asiaLow,  low)
+    line.set_x1(asiaLineH, asiaStartBar), line.set_x2(asiaLineH, bar_index), line.set_y1(asiaLineH, asiaHigh), line.set_y2(asiaLineH, asiaHigh)
+    line.set_x1(asiaLineL, asiaStartBar), line.set_x2(asiaLineL, bar_index), line.set_y1(asiaLineL, asiaLow),  line.set_y2(asiaLineL, asiaLow)
+    if showLabels and not na(asiaLbl)
+        label.set_x(asiaLbl, asiaStartBar)
+        label.set_y(asiaLbl, asiaHigh)
+    if sessionOC and not na(asiaOC)
+        line.set_x1(asiaOC, asiaStartBar), line.set_x2(asiaOC, bar_index), line.set_y1(asiaOC, asiaOpen), line.set_y2(asiaOC, asiaOpen)
+
+if inLondon and showLondon and inRangeSess and not na(ldnLineH)
+    ldnHigh := math.max(ldnHigh, high)
+    ldnLow  := math.min(ldnLow,  low)
+    line.set_x1(ldnLineH, ldnStartBar), line.set_x2(ldnLineH, bar_index), line.set_y1(ldnLineH, ldnHigh), line.set_y2(ldnLineH, ldnHigh)
+    line.set_x1(ldnLineL, ldnStartBar), line.set_x2(ldnLineL, bar_index), line.set_y1(ldnLineL, ldnLow),  line.set_y2(ldnLineL, ldnLow)
+    if showLabels and not na(ldnLbl)
+        label.set_x(ldnLbl, ldnStartBar)
+        label.set_y(ldnLbl, ldnHigh)
+    if sessionOC and not na(ldnOC)
+        line.set_x1(ldnOC, ldnStartBar), line.set_x2(ldnOC, bar_index), line.set_y1(ldnOC, ldnOpen), line.set_y2(ldnOC, ldnOpen)
+
+// ── ATR Table ─────────────────────────────────────────────────────────────────
+f_getPos(_p) =>
+    switch _p
+        "Top Left"      => position.top_left
+        "Top Center"    => position.top_center
+        "Top Right"     => position.top_right
+        "Bottom Left"   => position.bottom_left
+        "Bottom Center" => position.bottom_center
+        "Bottom Right"  => position.bottom_right
+
+bgColorATR   = color.new(color.black, 70)
+borderColATR = color.new(color.gray, 70)
+var table atrTable = table.new(position.bottom_center, 3, 1, border_width=1, border_color=borderColATR)
+
+atrRaw = ta.atr(atrLen)
+factor = math.pow(10.0, decimals)
+atrVal = math.round(atrRaw * factor) / factor
+atrTxt = "ATR: " + str.tostring(atrVal)
+
+if barstate.islast
+    table.set_position(atrTable, f_getPos(posInput))
+    table.cell(atrTable, 0, 0, atrTxt, text_color=fontColor, bgcolor=bgColorATR, text_halign=text.align_center, text_valign=text.align_center)
+    table.cell(atrTable, 1, 0, "", text_color=fontColor, bgcolor=bgColorATR, text_halign=text.align_center, text_valign=text.align_center)
+    table.cell(atrTable, 2, 0, "", text_color=fontColor, bgcolor=bgColorATR, text_halign=text.align_center, text_valign=text.align_center)
+
+// ── Checklist Table ────────────────────────────────────────────────────────────
+chkTxtSz = chkSize == "Tiny" ? size.tiny : chkSize == "Small" ? size.small : chkSize == "Large" ? size.large : size.normal
+
+var table chkTable = na
+
+if barstate.islast
+    if not showChk
+        if not na(chkTable)
+            table.delete(chkTable)
+            chkTable := na
+    if showChk
+        score = (chkHTF ? 25 : 0) + (chkLQ ? 25 : 0) + (chkBOS ? 25 : 0) + (chkImb ? 25 : 0)
+        ctxStr = ctxIsPremium ? "Premium" : ctxIsDiscount ? "Discount" : "Equilibrium"
+        ctxBgC = ctxIsPremium ? chkColPrem : ctxIsDiscount ? chkColDisc : color.new(color.gray, 40)
+        if na(chkTable)
+            chkTable := table.new(position.top_right, 2, 10,
+                 frame_width=1, frame_color=chkColBorder,
+                 border_width=1, border_color=chkColBorder)
+        // row 0 — spacer
+        table.cell(chkTable, 0, 0, "", bgcolor=color.rgb(0,0,0,100), text_color=color.rgb(0,0,0,100), text_size=chkTxtSz)
+        table.cell(chkTable, 1, 0, "", bgcolor=color.rgb(0,0,0,100), text_color=color.rgb(0,0,0,100), text_size=chkTxtSz)
+        // row 1 — title
+        table.cell(chkTable, 0, 1, "[TF]",       bgcolor=chkColTitleBg, text_color=chkColTitleTx, text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 1, 1, "PxD OTE 👑", bgcolor=chkColTitleBg, text_color=chkColHdrTx,   text_halign=text.align_center, text_size=chkTxtSz)
+        // row 2 — context timeframe + premium/discount
+        table.cell(chkTable, 0, 2, f_tfLabel(ctxTF), bgcolor=chkColTitleBg, text_color=chkColTitleTx, text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 1, 2, ctxStr,            bgcolor=ctxBgC,        text_color=chkColTitleTx, text_halign=text.align_center, text_size=chkTxtSz)
+        // row 3 — trend
+        table.cell(chkTable, 0, 3, "Trend",    bgcolor=chkColTitleBg, text_color=chkColTitleTx, text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 1, 3, ctxTrend,   bgcolor=ctxTrendBg,    text_color=ctxTrendTx,    text_halign=text.align_center, text_size=chkTxtSz)
+        // row 4 — checklist header
+        table.cell(chkTable, 0, 4, "Checklist",  bgcolor=chkColHdrBg, text_color=chkColHdrTx, text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 1, 4, "$",           bgcolor=chkColHdrBg, text_color=color.black,  text_halign=text.align_center, text_size=chkTxtSz)
+        // rows 5-8 — checklist items
+        table.cell(chkTable, 0, 5, "HTF Alignment",    bgcolor=chkColBg, text_color=chkColBodyTx,        text_halign=text.align_left,   text_size=chkTxtSz)
+        table.cell(chkTable, 1, 5, f_check(chkHTF),   bgcolor=f_checkBg(chkHTF),  text_color=f_checkTxt(chkHTF), text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 0, 6, "Liquidity Sweep", bgcolor=chkColBg, text_color=chkColBodyTx,        text_halign=text.align_left,   text_size=chkTxtSz)
+        table.cell(chkTable, 1, 6, f_check(chkLQ),    bgcolor=f_checkBg(chkLQ),   text_color=f_checkTxt(chkLQ),  text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 0, 7, "BOS or MSS",      bgcolor=chkColBg, text_color=chkColBodyTx,        text_halign=text.align_left,   text_size=chkTxtSz)
+        table.cell(chkTable, 1, 7, f_check(chkBOS),   bgcolor=f_checkBg(chkBOS),  text_color=f_checkTxt(chkBOS), text_halign=text.align_center, text_size=chkTxtSz)
+        table.cell(chkTable, 0, 8, "Imbalance",       bgcolor=chkColBg, text_color=chkColBodyTx,        text_halign=text.align_left,   text_size=chkTxtSz)
+        table.cell(chkTable, 1, 8, f_check(chkImb),   bgcolor=f_checkBg(chkImb),  text_color=f_checkTxt(chkImb), text_halign=text.align_center, text_size=chkTxtSz)
+        // row 9 — trade score
+        table.cell(chkTable, 0, 9, "Trade Score",       bgcolor=chkColBg, text_color=chkColBodyTx, text_halign=text.align_left,   text_size=chkTxtSz)
+        table.cell(chkTable, 1, 9, str.tostring(score), bgcolor=chkColBg, text_color=chkColScore,  text_halign=text.align_center, text_size=chkTxtSz)

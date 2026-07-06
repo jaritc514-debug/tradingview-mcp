@@ -1,47 +1,86 @@
-Analyze the symbol currently open on my TradingView chart. Do not switch symbols.
-This is a quick pre-filter only. Do NOT run full analysis. Do NOT check zones, OTE, or macro.
-Only complete these 3 steps and give a single verdict at the end.
+PREFILTER SCAN — PxD Trading System
+=====================================
+You are scanning the pair currently open on TradingView for the PxD trading system.
+Quick scan only — no entry levels, no fib math, no swing label hunting.
 
 ---
 
-STEP 1: LOCATION (Daily)
-- Switch chart to Daily
-- Read H1/H2/H3 and L1/L2/L3 from data_get_pine_tables(study_filter="PxD Trend Engine") — use the Pivot Levels table
-- Read Leg H and Leg L directly from data_get_pine_tables(study_filter="PxD Trend Engine") — use the Trend Summary table rows "Leg H" and "Leg L"
-- Position = (current price − Leg L) / (Leg H − Leg L)
-- Position = (current price − leg low) / (leg high − leg low)
-- Divide into 3 equal sections
-- State: Discount (0-33%) / Equilibrium (33-66%) / Premium (66-100%)
-- If Equilibrium: output "NO TRADE — Equilibrium" and stop immediately
+STEP 1 — READ TREND DIRECTION PRO (Daily)
+- chart_set_timeframe → Daily
+- data_get_pine_tables(study_filter="Trend Direction Pro") → read the table in the bottom-left corner
+- Extract the 1D row: Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)
+- Extract the 1W row: Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)
+- If table cannot be read: capture_screenshot and read visually
+
+Daily Trend = your bias. Weekly = context only, never overrides.
 
 ---
 
-STEP 2: DIRECTION (Daily)
-- Read Trend and Status directly from data_get_pine_tables(study_filter="PxD Trend Engine") — use the Trend Summary table
-- Do not perform independent pivot analysis — trust v18 output entirely
-- If Trend = Sideways: output "NO TRADE — Sideways" and stop immediately
+STEP 2 — CHECK PRICE LOCATION
+Call both in parallel:
+- data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → all swing labels with bar_index
+- quote_get → current price
+
+Sort all labels by bar_index DESCENDING (highest bar_index = most recent)
+Swing low = most recent HL or LL label (highest bar_index among HL/LL labels)
+Swing high = most recent HH or LH label with bar_index HIGHER than the swing low's bar_index
+  → If none exists: swing high UNCONFIRMED
+
+State the swing low price and source label (e.g. "HL @ 0.77954, bar 911")
+
+If swing high confirmed:
+  Location % = (price − swing low) / (swing high − swing low) × 100
+
+If swing high unconfirmed:
+  Within 1 ATR above swing low → Discount (provisional)
+  1–3 ATR above → Premium (provisional)
+  More than 3 ATR above → Extreme Premium (provisional)
+  State: "Swing high unconfirmed — location provisional"
+
+Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium
 
 ---
 
-STEP 3: ACTION MATRIX
-- Cross reference Location + Direction + Status using these rules:
+STEP 3 — CHECK PATH IS CLEAR
+- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → read S&D zones
+- Fresh zones = bgColor 2133728284 or 2116951068 (dark blue)
+- Touched zones = bgColor 439234094 or null — IGNORE completely
+- data_get_pine_tables(study_filter="PxD Toolkit") → read ATR value
+- Do NOT flag LQ labels as obstacles — LQ means liquidity already swept, it is positive confluence
 
-  Confirmed Bullish + Discount → LONG VALID ✓ (full conviction)
-  Confirmed Bearish + Premium → SHORT VALID ✓ (full conviction)
+For BUYS (Daily Bullish):
+  Flag as OBSTACLE only if:
+  1. Current price is INSIDE a fresh Supply zone (zone low < current price < zone high)
+  2. A fresh Supply zone is within 1 ATR ABOVE current price (zone low < current price + ATR)
+  Everything else = ignore, do not mention
 
-  Unconfirmed Bullish + Discount → LONG VALID (lower probability — requires 4H liquidity grab check in full analysis)
-  Unconfirmed Bearish + Premium → SHORT VALID (lower probability — requires 4H liquidity grab check in full analysis)
-
-  Sideways (any location) → NO TRADE
-  Equilibrium (any trend) → NO TRADE
-  Confirmed Bullish + Premium → NO ACTION
-  Confirmed Bearish + Discount → NO ACTION
-  Unconfirmed Bullish + Premium → NO ACTION
-  Unconfirmed Bearish + Discount → NO ACTION
-
-- If No Action: output "NO TRADE — No Action" and stop immediately
+For SELLS (Daily Bearish):
+  Flag as OBSTACLE only if:
+  1. Current price is INSIDE a fresh Demand zone (zone low < current price < zone high)
+  2. A fresh Demand zone is within 1 ATR BELOW current price (zone high > current price - ATR)
+  Everything else = ignore, do not mention
 
 ---
 
-VERDICT (one line only):
-[PAIR] — [Location %] — [Trend] — [Status] — [Long valid / Short valid / No Action] — PROCEED or NO TRADE
+OUTPUT — format exactly as follows:
+
+PAIR: [pair]
+Daily: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging]
+Weekly: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging]
+Weekly alignment: [Agrees / Conflicts / Neutral]
+Location: [Discount / Premium / Equilibrium] — [one sentence from screenshot]
+Path: [Clear / Obstacle — fresh [zone type] at [price range]]
+
+VERDICT: VALID ✅ / CAUTION ⚠️ / SKIP ❌
+Reason: [one line — based only on trend direction + location + immediate path]
+Tags: [Daily Status] | [Daily Strength] | [Weekly alignment]
+
+---
+
+VERDICT RULES:
+✅ VALID   — Daily has clear trend AND price is in correct location for that bias
+⚠️ CAUTION — Equilibrium location, OR price inside or within 1 ATR of a fresh zone
+❌ SKIP    — Trend Direction Pro unreadable OR no discernible Daily trend direction
+
+NEVER change verdict based on: Confirmed/Unconfirmed, Ranging/Trending, Weekly alignment.
+These are tags for data collection only — all setups are taken regardless.

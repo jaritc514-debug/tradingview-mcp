@@ -1,71 +1,83 @@
-The analysis above is complete. Now generate a pre-filled trade journal entry based on the analysis output.
-
-Format the output exactly as shown below. Every field must be pulled directly from the analysis. Do not invent or estimate any value not present in the analysis.
+LOG TRADE — PxD Trading System
+=====================================
+The analysis above is complete. Generate a pre-filled journal entry based on that analysis.
+Pull every value directly from the analysis output. Do not invent or estimate anything not stated.
+Leave blank any field that requires post-trade information or manual input.
 
 ---
 
 TRADE JOURNAL ENTRY — [PAIR]
 
 === 01 TRADE OVERVIEW ===
-Entry Date: [today's date yyyy-mm-dd]
-Entry Time: [leave blank — fill when limit triggers]
-Close Date: [leave blank]
-Close Time: [leave blank]
-Pair: [PAIR]
-Execution TF: 4H
-Setup Name: OTE x PxD
-Direction: [Buy / Sell based on bias]
-Trade Grade: [A / B / C / D — map: A+ = A, Absolute Best = A, A = B]
-Quality: Live Trade
-Entry Price: [entry level]
-Stop Loss: [SL level]
-Take Profit: [TP1 level — use TP2 if R:R to TP1 below 1:2]
-Position Size: [LEAVE BLANK — fill manually]
-R:R: [R:R to TP1]
-Result in R: [leave blank]
-P&L ($): [leave blank]
-Outcome: [leave blank]
+Entry Date:       [today's date — yyyy-mm-dd]
+Entry Time:       [leave blank — fill when limit triggers]
+Close Date:       [leave blank]
+Close Time:       [leave blank]
+Pair:             [PAIR]
+Execution TF:     [4H / 15m — based on which system was used]
+Setup Name:       OTE x PxD
+Direction:        [Buy / Sell]
+Trade Grade:      [A / B / C — from Step 8 of analysis]
+Quality:          Live Trade
+Entry Price:      [OTE entry level]
+Stop Loss:        [SL level]
+Take Profit:      [TP1 level]
+Position Size:    [LEAVE BLANK — fill manually]
+R:R:              [R:R to TP1]
+Result in R:      [leave blank]
+P&L ($):          [leave blank]
+Outcome:          [leave blank]
 
-=== 02 DAILY CONTEXT ===
-Daily Bias: [Bullish / Bearish / Neutral]
-Daily Fib Zone: [Premium >50% / Discount <50%]
-Daily Fib Precision: [Deep Premium >0.66 / Equilibrium / Deep Discount <0.33]
-Zone Valid: [Yes / No — based on action matrix result]
-COT Alignment: [Aligned / Conflicting / No Signal — from macro context]
-COT Regime: [leave blank if not stated in analysis]
-Daily Swing High: [H from impulsive leg]
-Daily Swing Low: [L from impulsive leg]
+=== 02 HIGHER TIMEFRAME CONTEXT ===
+Weekly Trend:     [Bullish / Bearish / Neutral — from Trend Direction Pro 1W row]
+Weekly Status:    [Confirmed / Unconfirmed — from Trend Direction Pro 1W row]
+Weekly Strength:  [Trending / Ranging — from Trend Direction Pro 1W row]
+COT Alignment:    [Aligned / Conflicting / No Signal — from macro context if available, else leave blank]
+COT Regime:       [leave blank if not stated in analysis]
 
-=== 03 DISPLACEMENT LEG QUALITY ===
-Leg Direction: [Bearish / Bullish]
-Leg Qualifiers: [list confirmed: Clean MSS / Strong momentum / Minimal pullback / Clear anchor / Dominant leg / Liquidity sweep]
-Leg Disqualifiers: [list if any: Choppy structure / Multiple MSS / Deep retracement / Unclear anchor]
-Leg Quality Score: [leave blank — fill manually based on chart]
+=== 03 DAILY CONTEXT ===
+[If Exec TF = 4H, fill this section. If Exec TF = 15m, adapt labels to 4H but still fill.]
+Daily Bias:         [Bullish / Bearish — from Trend Direction Pro 1D Trend]
+Daily Fib Zone:     [Premium >50% / Discount <50%]
+Zone Valid:         [Yes / No — based on location vs bias match]
+Daily Status:       [Confirmed / Unconfirmed — from Trend Direction Pro 1D Status]
+Daily Strength:     [Trending / Ranging — from Trend Direction Pro 1D Strength]
+Daily Swing High:   [swing high used for fib]
+Daily Swing Low:    [swing low used for fib]
 
-=== 04 FVG CONFIRMATION ===
-FVG Found: [Yes / No]
-FVG Location: [Above 50% (sells) / Below 50% (buys) / Failed filter]
-FVG Size: [Large / Medium / Small / Micro — estimate from range if stated]
-FVG Status: [Unmitigated / Partial / Mitigated]
-FVG Notes: [FVG price range from analysis]
+[If Exec TF = 15m — also fill these:]
+4H Status:          [Confirmed / Unconfirmed — from Trend Direction Pro 4H/1D row used as bias]
+4H Strength:        [Trending / Ranging]
 
-=== 05 CHECKLIST AND SCORE ===
-HTF Alignment: [Yes / No]
-Liquidity Sweep: [Yes / No]
-BOS and Imbalance: [Yes / No]
-70.5 Retracement: [Yes / No]
+=== 04 DISPLACEMENT LEG QUALITY ===
+Leg Direction:      [Bearish / Bullish — direction of the displacement leg]
+Trade Type:         [With-Trend / Counter-Trend]
+Liquidity Sweep:    [Yes / No — LQ label present before BOS/MSS]
+Leg Qualifiers:     [list confirmed from Step 5: Strong Momentum / Minimal Pullback / Clear Anchor / Dominant Leg]
 
-=== 06 EXECUTION AND PSYCHOLOGY ===
-[Leave all blank — fill after trade]
+=== 05 FVG CONFIRMATION ===
+FVG Found:          [Yes / No]
+FVG Location:       [Above 50% (sells) / Below 50% (buys) / Failed filter]
+FVG Size:           [leave blank — fill manually from chart]
+FVG Notes:          [FVG price range from analysis]
 
-=== 07 TRADE REVIEW ===
-Pre-Trade Plan: [One sentence summary: direction, entry, SL, TP, key confluence, what invalidates]
-Post-Trade Review: [leave blank]
-Lesson Learned: [leave blank]
+=== 06 CHECKLIST AND SCORE ===
+HTF Alignment:      [Yes / No — Daily location + trend aligned]
+Liquidity Sweep:    [Yes / No]
+BOS or MSS:         [Yes / No — which one: BOS / MSS]
+Imbalance:          [Yes / No — FVG present at entry]
+
+=== 07 EXECUTION AND PSYCHOLOGY ===
+[Leave all blank — fill after trade closes]
+
+=== 08 TRADE REVIEW ===
+Pre-Trade Plan:     [One sentence: direction, entry, SL, TP, key confluence, what invalidates]
+Post-Trade Review:  [leave blank]
+Lesson Learned:     [leave blank]
 
 === INVALIDATION CONDITIONS ===
-[List bullet points from analysis — paste directly]
+[Paste bullet points from analysis Step 10 — "What invalidates this setup?"]
 
 ---
-After outputting the journal entry, state:
-"Ready to log. Fill in Position Size, then paste each section into your journal. Complete Execution & Psychology and Trade Review after the trade closes."
+After printing the journal entry, state:
+"Ready to log. Fill in Position Size manually. Complete sections 07 and 08 after the trade closes."
