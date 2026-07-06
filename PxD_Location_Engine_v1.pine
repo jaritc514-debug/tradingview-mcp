@@ -1,24 +1,35 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════
-// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 3 rev C (cumulative)
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev G (cumulative)
 // Night 2 ✔ Layer 1 ZigZag (gate passed 50/50 EURUSD D+4H)
-// Night 3 ▶ Structure labels (STRICT) + Regime state machine + dashboard
-//   rev B: confirmation logic moved from function to global scope
-//   rev C: TF label converter (240→4H etc, mirror-format compliance);
-//          dashboard position input (default Bottom Right, clears TV
-//          logo + leaves bottom-left free for the paid tool's table)
-//   rev D: verification table now created ONLY when toggled on — its
-//          empty ghost was squatting bottom_right and hiding the dash
-// Night 4 ▷ Location + verdict matrix + MTF dashboard (1D+4H rows)
+// Night 3 ✔ Structure + regime machine (gate passed 8/8, rev D)
+// Night 4 ▶ Location module + hybrid verdict matrix + MTF dashboard
+//   rev G: dashboard rows ordered chart-TF-first (mirrors the paid
+//          tool's convention: its top row is always the chart's TF)
+//   rev F: verdict + color functions flattened to plain if/else
+//          (multi-line ternaries broke the v5 parser). Logic identical.
+//   rev E architecture: entire state machine moved into ONE pure
+//   function f_engine(), called in three contexts — chart TF (feeds
+//   drawings), Daily, and 4H (via request.security, lookahead OFF).
+//   One implementation, three independent instances. Logic from the
+//   gate-passed rev D is unchanged — only its container moved.
 //
-// SPEC.md v1.1 rules enforced here:
-//  - Confirmed pivots only. Developing extreme feeds NOTHING.
-//  - Labels: STRICT comparisons. Exactly-equal pivot = NEITHER stream.
-//  - Regime flip: candle CLOSE beyond most recent opposing confirmed
-//    pivot. Wicks never flip. Buffer input exists, DEFAULT 0 (dormant).
-//  - Status: 1 qualifying pivot = Unconfirmed, 2+ = Confirmed.
-//    Launch pivot counts as #1 only if it truly qualified (HL/LH).
-//  - Wick-only counter-pivot: regime survives, count resets to 0.
+// SPEC.md v1.1 rules added this stage:
+//  - Leg anchor PRIMARY: displacement leg — origin pivot → post-break
+//    extreme of the most recent close-beyond break (MSS or BOS).
+//    Re-anchors on every fresh break (continuation BOS included).
+//  - Leg FALLBACK: most recent adjacent confirmed H/L pair, used only
+//    before any break exists in the tracked window.
+//  - Location % measured low→high (0 = leg low, 100 = leg high).
+//    Buckets: Discount <40 | EQ 40–60 inclusive | Premium >60.
+//    Values can exceed 0–100 when price runs beyond the leg — they
+//    bucket as deep discount/premium, flagged for the manual-check
+//    section per the Friday workflow.
+//  - Verdict matrix: HYBRID mapping (Decision 7). The engine NEVER
+//    auto-greenlights a fade — all fades render COUNTER-TREND WATCH.
+//  - MTF rows show the DEVELOPING HTF bar's state live and settle at
+//    that bar's close (regime flips still require confirmed bars).
+// Night 4 GATE (fresh eyes only): manual fib vs engine leg on 5 pairs.
 // ═══════════════════════════════════════════════════════════════════
 indicator("PxD Location Engine v1", overlay=true, max_lines_count=500, max_labels_count=500, max_bars_back=5000)
 
@@ -33,161 +44,169 @@ zzColor  = input.color(color.new(#f0c040, 0), "Confirmed ZigZag Color", group=gr
 devColor = input.color(color.new(color.gray, 40), "Developing Leg Color", group=grp)
 lineW    = input.int(2, "Line Width", minval=1, maxval=4, group=grp)
 
-grpS     = "Structure & Regime (Night 3)"
+grpS     = "Structure & Regime"
 showLbls = input.bool(true, "Show HH/HL/LH/LL labels", group=grpS)
 lblColor = input.color(color.new(color.white, 20), "Label Color", group=grpS)
 bufAtrM  = input.float(0.0, "Break buffer (ATR mult) — DORMANT, keep 0 during validation", minval=0.0, maxval=1.0, step=0.05, group=grpS)
 atrLenB  = input.int(14, "Buffer ATR length", group=grpS)
-showDash = input.bool(true, "Show Status/Trend dashboard", group=grpS)
-dashPos  = input.string("Bottom Right", "Dashboard Position", options=["Top Left","Top Right","Bottom Left","Bottom Right","Middle Right"], group=grpS)
+
+grpL     = "Location & Verdict (Night 4)"
+showLeg  = input.bool(true, "Show active leg levels (chart TF)", group=grpL)
+legHiCol = input.color(color.new(color.red, 30),  "Leg High Color", group=grpL)
+legLoCol = input.color(color.new(color.lime, 30), "Leg Low Color",  group=grpL)
+
+grpD     = "Dashboard"
+showDash = input.bool(true, "Show MTF dashboard (D + 4H)", group=grpD)
+dashPos  = input.string("Bottom Right", "Dashboard Position", options=["Top Left","Top Right","Bottom Left","Bottom Right","Middle Right"], group=grpD)
 
 grpDbg   = "Verification Aids"
 showTbl  = input.bool(false, "Show pivot verification table", group=grpDbg)
 tblRows  = input.int(10, "Pivots listed in table", minval=5, maxval=20, group=grpDbg)
 
-dev    = devTicks * syminfo.mintick
-bufAbs = bufAtrM * ta.atr(atrLenB)
+dev = devTicks * syminfo.mintick
 
-// ── Window extremum qualification ───────────────────────────────────
-isWinHigh = ta.highestbars(high, depth) == 0
-isWinLow  = ta.lowestbars(low,  depth) == 0
+// ═════════════════════════════════════════════════════════════════
+// THE ENGINE — one pure function. All state is function-local, so
+// each calling context (chart / Daily / 4H) runs its own instance.
+// Returns: regime, regCount, locPct, legHi, legLo, isFallback,
+//          doConf, confPx, confBar, confDir, confCls
+// ═════════════════════════════════════════════════════════════════
+f_engine() =>
+    // per-context qualification & buffer
+    isWH = ta.highestbars(high, depth) == 0
+    isWL = ta.lowestbars(low,  depth) == 0
+    buf  = bufAtrM * ta.atr(atrLenB)
 
-// ── ZigZag state (Layer 1 — unchanged, gate-passed) ─────────────────
-var int   dir     = 0
-var float candPx  = na
-var int   candBar = na
+    // zigzag state
+    var int   dir     = 0
+    var float candPx  = na
+    var int   candBar = na
+    // structure state
+    var float lastHi    = na
+    var float lastLo    = na
+    var int   lastHiCls = 0
+    var int   lastLoCls = 0
+    // regime state
+    var int   regime   = 0
+    var int   regCount = 0
+    var float refHi    = na
+    var float refLo    = na
+    var bool  hiBroken = false
+    var bool  loBroken = false
+    // leg state
+    var float legHi       = na
+    var float legLo       = na
+    var bool  legAnchored = false
 
-var array<float> zzPx  = array.new_float()
-var array<int>   zzBar = array.new_int()
-var array<int>   zzDir = array.new_int()   // +1 = high, -1 = low
-var array<line>  zzLn  = array.new<line>()
-var array<label> zzLb  = array.new<label>()
+    bool  doConf  = false
+    float confPx  = na
+    int   confBar = na
+    int   confDir = 0
+    int   confCls = 0
 
-MAXPIV = 120
+    // ── ZigZag state machine (gate-passed logic, unchanged) ──
+    if dir == 0
+        if isWH
+            dir     := 1
+            candPx  := high
+            candBar := bar_index
+        else if isWL
+            dir     := -1
+            candPx  := low
+            candBar := bar_index
+    else if dir == 1
+        if isWH and high >= candPx
+            candPx  := high
+            candBar := bar_index
+        if isWL and (candPx - low >= dev) and (bar_index - candBar >= backstep)
+            doConf  := true
+            confPx  := candPx
+            confBar := candBar
+            confDir := 1
+            dir     := -1
+            candPx  := low
+            candBar := bar_index
+    else if dir == -1
+        if isWL and low <= candPx
+            candPx  := low
+            candBar := bar_index
+        if isWH and (high - candPx >= dev) and (bar_index - candBar >= backstep)
+            doConf  := true
+            confPx  := candPx
+            confBar := candBar
+            confDir := -1
+            dir     := 1
+            candPx  := high
+            candBar := bar_index
 
-// ── Structure & regime state ─────────────────────────────────────────
-var float lastHi    = na   // previous confirmed HIGH pivot price
-var float lastLo    = na   // previous confirmed LOW pivot price
-var int   lastHiCls = 0    // newest high:  1=HH, -1=LH, 0=equal/none
-var int   lastLoCls = 0    // newest low:   1=HL, -1=LL, 0=equal/none
+    // ── Pivot confirmation: STRICT classification + counts ──
+    if doConf
+        if confDir == 1
+            confCls   := na(lastHi) ? 0 : confPx > lastHi ? 1 : confPx < lastHi ? -1 : 0
+            lastHiCls := confCls
+            if regime == -1
+                if confCls == -1
+                    regCount := regCount + 1
+                else if confCls == 1
+                    regCount := 0    // wick-made HH, no close-break: reset, regime survives
+            lastHi   := confPx
+            refHi    := confPx
+            hiBroken := false        // fresh high = fresh break reference
+        else
+            confCls   := na(lastLo) ? 0 : confPx > lastLo ? 1 : confPx < lastLo ? -1 : 0
+            lastLoCls := confCls
+            if regime == 1
+                if confCls == 1
+                    regCount := regCount + 1
+                else if confCls == -1
+                    regCount := 0    // wick-made LL, no close-break: reset, survive
+            lastLo   := confPx
+            refLo    := confPx
+            loBroken := false
 
-var int regime   = 0       // +1 bullish, -1 bearish, 0 = cold start
-var int regCount = 0       // consecutive qualifying pivots in regime
+    // ── Regime flips + displacement-leg anchoring (closed bars only) ──
+    // Every FIRST close beyond a reference = break event (MSS if it
+    // flips the regime, BOS if it continues it). Either way the
+    // displacement leg re-anchors: origin = most recent confirmed
+    // opposite pivot, extreme = post-break running extreme.
+    if barstate.isconfirmed or barstate.ishistory
+        if not na(refHi) and not hiBroken and close > refHi + buf
+            hiBroken := true
+            if regime <= 0
+                regime   := 1
+                regCount := lastLoCls == 1 ? 1 : 0
+            legLo       := nz(lastLo, low)
+            legHi       := high
+            legAnchored := true
+        else if not na(refLo) and not loBroken and close < refLo - buf
+            loBroken := true
+            if regime >= 0
+                regime   := -1
+                regCount := lastHiCls == -1 ? 1 : 0
+            legHi       := nz(lastHi, high)
+            legLo       := low
+            legAnchored := true
 
-var float refHi = na       // newest confirmed high = bullish break ref
-var float refLo = na       // newest confirmed low  = bearish break ref
-
-// ── Per-bar ZigZag state machine ─────────────────────────────────────
-// Sets a confirmation flag; the actual confirmation work happens below
-// at global scope (Pine cannot mutate globals inside functions).
-bool  doConf  = false
-float confPx  = na
-int   confBar = na
-int   confDir = 0
-
-if dir == 0
-    if isWinHigh
-        dir := 1
-        candPx := high
-        candBar := bar_index
-    else if isWinLow
-        dir := -1
-        candPx := low
-        candBar := bar_index
-else if dir == 1
-    if isWinHigh and high >= candPx
-        candPx := high
-        candBar := bar_index
-    if isWinLow and (candPx - low >= dev) and (bar_index - candBar >= backstep)
-        doConf  := true
-        confPx  := candPx
-        confBar := candBar
-        confDir := 1
-        dir     := -1
-        candPx  := low
-        candBar := bar_index
-else if dir == -1
-    if isWinLow and low <= candPx
-        candPx := low
-        candBar := bar_index
-    if isWinHigh and (high - candPx >= dev) and (bar_index - candBar >= backstep)
-        doConf  := true
-        confPx  := candPx
-        confBar := candBar
-        confDir := -1
-        dir     := 1
-        candPx  := high
-        candBar := bar_index
-
-// ── Pivot confirmation (global scope) ───────────────────────────────
-if doConf
-    // zigzag segment from previous confirmed pivot
-    if array.size(zzPx) > 0
-        pPx = array.get(zzPx, array.size(zzPx) - 1)
-        pBx = array.get(zzBar, array.size(zzBar) - 1)
-        array.push(zzLn, line.new(pBx, pPx, confBar, confPx, color=zzColor, width=lineW))
-    // ── structure classification (STRICT) ──
-    string sTxt = ""
-    if confDir == 1
-        int cls = na(lastHi) ? 0 : confPx > lastHi ? 1 : confPx < lastHi ? -1 : 0
-        lastHiCls := cls
-        sTxt := cls == 1 ? "HH" : cls == -1 ? "LH" : ""
-        // in a BEARISH regime, highs are the qualifying stream
-        if regime == -1
-            if cls == -1
-                regCount := regCount + 1
-            else if cls == 1
-                regCount := 0   // wick-made HH, no close-break: reset, regime survives
-        lastHi := confPx
-        refHi  := confPx
-    else
-        int cls = na(lastLo) ? 0 : confPx > lastLo ? 1 : confPx < lastLo ? -1 : 0
-        lastLoCls := cls
-        sTxt := cls == 1 ? "HL" : cls == -1 ? "LL" : ""
+    // post-break extreme extends with the trend
+    if legAnchored
         if regime == 1
-            if cls == 1
-                regCount := regCount + 1
-            else if cls == -1
-                regCount := 0   // wick-made LL in bullish regime: reset, survive
-        lastLo := confPx
-        refLo  := confPx
-    // markers & labels
-    if showDots
-        array.push(zzLb, label.new(confBar, confPx, "●", color=color.new(color.white, 100), textcolor=zzColor,
-             style=confDir == 1 ? label.style_label_down : label.style_label_up, size=size.tiny))
-    if showLbls and sTxt != ""
-        array.push(zzLb, label.new(confBar, confPx, sTxt, color=color.new(color.white, 100), textcolor=lblColor,
-             style=confDir == 1 ? label.style_label_down : label.style_label_up, size=size.small))
-    array.push(zzPx, confPx)
-    array.push(zzBar, confBar)
-    array.push(zzDir, confDir)
-    if array.size(zzPx) > MAXPIV
-        array.shift(zzPx)
-        array.shift(zzBar)
-        array.shift(zzDir)
-        if array.size(zzLn) > 0
-            line.delete(array.shift(zzLn))
-        if array.size(zzLb) > 0
-            label.delete(array.shift(zzLb))
+            legHi := math.max(legHi, high)
+        else if regime == -1
+            legLo := math.min(legLo, low)
 
-// ── Regime flips — CLOSED bars only, close-beyond only ──────────────
-if barstate.isconfirmed or barstate.ishistory
-    if not na(refHi) and regime <= 0 and close > refHi + bufAbs
-        regime   := 1
-        regCount := lastLoCls == 1 ? 1 : 0   // launch HL counts only if it qualified
-    else if not na(refLo) and regime >= 0 and close < refLo - bufAbs
-        regime   := -1
-        regCount := lastHiCls == -1 ? 1 : 0
+    // ── Location: displacement leg primary, adjacent-pair fallback ──
+    float useHi      = legAnchored ? legHi : lastHi
+    float useLo      = legAnchored ? legLo : lastLo
+    bool  isFallback = not legAnchored
+    float locPct     = na
+    if not na(useHi) and not na(useLo) and useHi > useLo
+        locPct := (close - useLo) / (useHi - useLo) * 100
 
-// ── Status / Trend outputs ───────────────────────────────────────────
-statusTxt = regime == 0 ? "—" : regCount >= 2 ? "Confirmed" : "Unconfirmed"
-trendTxt  = regime == 1 ? "Bullish" : regime == -1 ? "Bearish" : "Sideways"
-statusCol = regime == 0 ? color.white : regCount >= 2 ? (regime == 1 ? color.lime : color.red) : color.orange
-trendCol  = regime == 1 ? color.lime : regime == -1 ? color.red : color.white
+    [regime, regCount, locPct, useHi, useLo, isFallback, doConf, confPx, confBar, confDir, confCls]
 
-// ── Dashboard (chart TF only — Night 4 adds 1D+4H MTF rows) ─────────
-// Mirror-format per SPEC §6: column ORDER matches paid tool (Time|Status|Trend).
-// Position is configurable — validation needs both dashboards visible at once.
+// ═════════════════════════════════════════════════════════════════
+// Pure display helpers (no state)
+// ═════════════════════════════════════════════════════════════════
 f_tfLabel(tf) =>
     switch tf
         "1"   => "1m"
@@ -203,31 +222,160 @@ f_tfLabel(tf) =>
         "M"   => "M"
         => tf
 
-dashLoc = dashPos == "Top Left" ? position.top_left : dashPos == "Top Right" ? position.top_right : dashPos == "Bottom Left" ? position.bottom_left : dashPos == "Middle Right" ? position.middle_right : position.bottom_right
-var table dash = table.new(dashLoc, 3, 2, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.new(color.gray, 70))
-if barstate.islast and showDash
-    table.cell(dash, 0, 0, "Time",   text_color=#f0c040, text_size=size.small)
-    table.cell(dash, 1, 0, "Status", text_color=#f0c040, text_size=size.small)
-    table.cell(dash, 2, 0, "Trend",  text_color=#f0c040, text_size=size.small)
-    table.cell(dash, 0, 1, f_tfLabel(timeframe.period), text_color=color.white, text_size=size.small)
-    table.cell(dash, 1, 1, statusTxt, text_color=statusCol, text_size=size.small)
-    table.cell(dash, 2, 1, trendTxt,  text_color=trendCol,  text_size=size.small)
+f_statusTxt(reg, cnt) => reg == 0 ? "—" : cnt >= 2 ? "Confirmed" : "Unconfirmed"
+f_trendTxt(reg)       => reg == 1 ? "Bullish" : reg == -1 ? "Bearish" : "Sideways"
+f_statusCol(reg, cnt) => reg == 0 ? color.white : cnt >= 2 ? (reg == 1 ? color.lime : color.red) : color.orange
+f_trendCol(reg)       => reg == 1 ? color.lime : reg == -1 ? color.red : color.white
+f_locTxt(loc)         => na(loc) ? "—" : str.tostring(loc, "#.0") + "%"
+f_bucket(loc)         => na(loc) ? 0 : loc < 40 ? -1 : loc <= 60 ? 0 : 1   // -1 disc, 0 EQ, +1 prem
 
-// ── Developing (unconfirmed) leg — display only, feeds NOTHING ───────
+// Hybrid verdict matrix — Decision 7. Fades are NEVER auto-valid.
+f_verdict(reg, cnt, loc) =>
+    string v = "—"
+    if not na(loc)
+        b = f_bucket(loc)
+        // direction state: SIDE / UP / DOWN / UBULL / UBEAR
+        string d = reg == 0 ? "SIDE" : cnt >= 2 ? (reg == 1 ? "UP" : "DOWN") : (reg == 1 ? "UBULL" : "UBEAR")
+        if b == 0
+            v := "NO TRADE"
+        else if b == -1   // Discount
+            if d == "UP"
+                v := "LONG VALID"
+            else if d == "SIDE" or d == "UBULL"   // with-transition: sideways mapping
+                v := "LONG VALID (rng)"
+            else                                   // DOWN or UBEAR: fade → WATCH, never auto-valid
+                v := "CT WATCH"
+        else              // Premium
+            if d == "DOWN"
+                v := "SHORT VALID"
+            else if d == "SIDE" or d == "UBEAR"   // with-transition
+                v := "SHORT VALID (rng)"
+            else                                   // UP or UBULL: fade → WATCH
+                v := "CT WATCH"
+    v
+
+f_verdictCol(v) =>
+    color c = color.white
+    if v == "LONG VALID" or v == "LONG VALID (rng)"
+        c := color.lime
+    else if v == "SHORT VALID" or v == "SHORT VALID (rng)"
+        c := color.red
+    else if v == "CT WATCH"
+        c := color.orange
+    else if v == "NO TRADE"
+        c := color.gray
+    c
+
+// ═════════════════════════════════════════════════════════════════
+// Three engine instances
+// ═════════════════════════════════════════════════════════════════
+[regC, cntC, locC, hiC, loC, fbC, doC, cPxC, cBarC, cDirC, cClsC] = f_engine()
+[regD, cntD, locD, hiD, loD, fbD, doD, cPxD, cBarD, cDirD, cClsD] = request.security(syminfo.tickerid, "D",   f_engine(), lookahead=barmerge.lookahead_off)
+[reg4, cnt4, loc4, hi4, lo4, fb4, do4, cPx4, cBar4, cDir4, cCls4] = request.security(syminfo.tickerid, "240", f_engine(), lookahead=barmerge.lookahead_off)
+
+// ═════════════════════════════════════════════════════════════════
+// Chart-TF drawings (consume the chart instance's events)
+// ═════════════════════════════════════════════════════════════════
+var array<float> zzPx  = array.new_float()
+var array<int>   zzBar = array.new_int()
+var array<int>   zzDir = array.new_int()
+var array<line>  zzLn  = array.new<line>()
+var array<label> zzLb  = array.new<label>()
+MAXPIV = 120
+
+if doC
+    if array.size(zzPx) > 0
+        pPx = array.get(zzPx, array.size(zzPx) - 1)
+        pBx = array.get(zzBar, array.size(zzBar) - 1)
+        array.push(zzLn, line.new(pBx, pPx, cBarC, cPxC, color=zzColor, width=lineW))
+    string sTxt = cDirC == 1 ? (cClsC == 1 ? "HH" : cClsC == -1 ? "LH" : "") : (cClsC == 1 ? "HL" : cClsC == -1 ? "LL" : "")
+    if showDots
+        array.push(zzLb, label.new(cBarC, cPxC, "●", color=color.new(color.white, 100), textcolor=zzColor,
+             style=cDirC == 1 ? label.style_label_down : label.style_label_up, size=size.tiny))
+    if showLbls and sTxt != ""
+        array.push(zzLb, label.new(cBarC, cPxC, sTxt, color=color.new(color.white, 100), textcolor=lblColor,
+             style=cDirC == 1 ? label.style_label_down : label.style_label_up, size=size.small))
+    array.push(zzPx, cPxC)
+    array.push(zzBar, cBarC)
+    array.push(zzDir, cDirC)
+    if array.size(zzPx) > MAXPIV
+        array.shift(zzPx)
+        array.shift(zzBar)
+        array.shift(zzDir)
+        if array.size(zzLn) > 0
+            line.delete(array.shift(zzLn))
+        if array.size(zzLb) > 0
+            label.delete(array.shift(zzLb))
+
+// active leg levels (chart TF) — the range the location % is measured on
+var line legHiLn = na
+var line legLoLn = na
+var label legHiLb = na
+var label legLoLb = na
+if barstate.islast and showLeg and not na(hiC) and not na(loC)
+    if na(legHiLn)
+        legHiLn := line.new(na, na, na, na, color=legHiCol, width=1, style=line.style_dashed)
+        legLoLn := line.new(na, na, na, na, color=legLoCol, width=1, style=line.style_dashed)
+        legHiLb := label.new(na, na, "", color=color.new(color.white, 100), style=label.style_label_left, size=size.small)
+        legLoLb := label.new(na, na, "", color=color.new(color.white, 100), style=label.style_label_left, size=size.small)
+    line.set_xy1(legHiLn, bar_index - 30, hiC)
+    line.set_xy2(legHiLn, bar_index + 5,  hiC)
+    line.set_xy1(legLoLn, bar_index - 30, loC)
+    line.set_xy2(legLoLn, bar_index + 5,  loC)
+    label.set_xy(legHiLb, bar_index + 5, hiC)
+    label.set_xy(legLoLb, bar_index + 5, loC)
+    label.set_text(legHiLb, "Leg H " + (fbC ? "(fallback)" : ""))
+    label.set_text(legLoLb, "Leg L " + (fbC ? "(fallback)" : ""))
+    label.set_textcolor(legHiLb, legHiCol)
+    label.set_textcolor(legLoLb, legLoCol)
+
+// developing (unconfirmed) leg — display only
+// NOTE: candidate lives inside the function now; approximate the
+// developing leg as last confirmed pivot → current bar extreme.
 var line devLine = na
-if barstate.islast and showDev and array.size(zzPx) > 0 and not na(candPx)
+if barstate.islast and showDev and array.size(zzPx) > 0
     if na(devLine)
         devLine := line.new(na, na, na, na, style=line.style_dotted, color=devColor, width=lineW)
     lPx = array.get(zzPx, array.size(zzPx) - 1)
     lBx = array.get(zzBar, array.size(zzBar) - 1)
+    lDr = array.get(zzDir, array.size(zzDir) - 1)
     line.set_xy1(devLine, lBx, lPx)
-    line.set_xy2(devLine, candBar, candPx)
-    line.set_color(devLine, devColor)
+    line.set_xy2(devLine, bar_index, lDr == 1 ? low : high)
 
-// ── Verification table (toggle in settings when needed) ─────────────
-// rev D: created only when enabled — an empty table still claims its
-// corner and covers whatever renders beneath it. Lives top_right so it
-// can never collide with the dashboard even when both are on.
+// ═════════════════════════════════════════════════════════════════
+// MTF Dashboard — D + 4H rows. Mirror-format first 3 columns
+// (Time | Status | Trend), Loc and Verdict appended after.
+// ═════════════════════════════════════════════════════════════════
+dashLoc = dashPos == "Top Left" ? position.top_left : dashPos == "Top Right" ? position.top_right : dashPos == "Bottom Left" ? position.bottom_left : dashPos == "Middle Right" ? position.middle_right : position.bottom_right
+var table dash = table.new(dashLoc, 5, 3, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.new(color.gray, 70))
+if barstate.islast and showDash
+    table.cell(dash, 0, 0, "Time",    text_color=#f0c040, text_size=size.small)
+    table.cell(dash, 1, 0, "Status",  text_color=#f0c040, text_size=size.small)
+    table.cell(dash, 2, 0, "Trend",   text_color=#f0c040, text_size=size.small)
+    table.cell(dash, 3, 0, "Loc",     text_color=#f0c040, text_size=size.small)
+    table.cell(dash, 4, 0, "Verdict", text_color=#f0c040, text_size=size.small)
+    // Row order mirrors the paid tool: chart TF first. On a Daily
+    // chart the D row leads; on 4H (or lower) the 4H row leads.
+    bool dailyChart = timeframe.period == "D" or timeframe.period == "W" or timeframe.period == "M"
+    int rD = dailyChart ? 1 : 2
+    int r4 = dailyChart ? 2 : 1
+    // Daily row
+    vD = f_verdict(regD, cntD, locD)
+    table.cell(dash, 0, rD, "D", text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, rD, f_statusTxt(regD, cntD), text_color=f_statusCol(regD, cntD), text_size=size.small)
+    table.cell(dash, 2, rD, f_trendTxt(regD), text_color=f_trendCol(regD), text_size=size.small)
+    table.cell(dash, 3, rD, f_locTxt(locD) + (fbD ? "*" : ""), text_color=color.white, text_size=size.small)
+    table.cell(dash, 4, rD, vD, text_color=f_verdictCol(vD), text_size=size.small)
+    // 4H row
+    v4 = f_verdict(reg4, cnt4, loc4)
+    table.cell(dash, 0, r4, "4H", text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, r4, f_statusTxt(reg4, cnt4), text_color=f_statusCol(reg4, cnt4), text_size=size.small)
+    table.cell(dash, 2, r4, f_trendTxt(reg4), text_color=f_trendCol(reg4), text_size=size.small)
+    table.cell(dash, 3, r4, f_locTxt(loc4) + (fb4 ? "*" : ""), text_color=color.white, text_size=size.small)
+    table.cell(dash, 4, r4, v4, text_color=f_verdictCol(v4), text_size=size.small)
+    // * = fallback leg (no break in window yet)
+
+// ── Verification table (created only when enabled — rev D fix) ──────
 var table vt = showTbl ? table.new(position.top_right, 3, tblRows + 2, bgcolor=color.new(color.black, 20), border_width=1, border_color=color.new(color.gray, 70)) : na
 if barstate.islast and showTbl
     n = array.size(zzPx)
