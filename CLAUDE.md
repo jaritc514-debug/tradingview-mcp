@@ -134,6 +134,10 @@ Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines')
 - Toolkit equal-pivot inconsistency: labels use >=, trend uses strict > — validation log note
 - Live chart swing period = 6, code default = 5 — align in v2
 - Next: Night 2 = ZigZag 12/3/1 port, verify pivot-for-pivot vs paid tool on EURUSD D+4H
+- Night 2 PASSED 50/50 EURUSD D+4H (ZigZag Layer 1 committed)
+- Night 3 PASSED 8/8 (EURUSD, AUDUSD, USDJPY, AUDNZD × D+4H — rev D committed)
+- Known diffs for validation log: (1) equal-pivot convention (labels >= vs strict >), (2) engine registers shallow-window pivots the paid tool skips in strong trends (USDJPY 4H, 2/25 extra) — possible earlier Confirmed status, watch during validation
+- Next: Night 4 = location module + verdict matrix + MTF dashboard (1D+4H rows). Night 4 GATE requires fresh eyes — manual fib comparison on 5 pairs, NOT to be run end-of-shift
 
 ## System Rules
 
