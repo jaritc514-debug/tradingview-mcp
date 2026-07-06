@@ -128,25 +128,12 @@ Claude Code ←→ MCP Server (stdio) ←→ CDP (localhost:9222) ←→ Trading
 
 Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines').get(false)._primitivesDataById`
 
-## Current Status
-Last updated: 2026-06-22
-
-### What was done
-- Full methodology rebuild — prompt files rewritten from scratch to match current trading rules
-- Trend direction now read from "Trend Direction Pro" indicator table (1D and 1W rows) — NOT from HH/HL pivot detection
-- Swing detection via PxD Toolkit HH/HL/LH/LL labels retained for price location (fib) and displacement leg identification only
-- S&D zones removed from workflow entirely
-- Entry criteria simplified: BOS or MSS → OTE (70.5% retracement) → FVG at entry (both required)
-- Weekly trend logged as context only — never disqualifies a setup
-- Indicator status logged in journal: Daily Status/Strength, Weekly Trend/Status/Strength, 4H Status/Strength (for LTF trades)
-- FVG detection retained via PxD Toolkit box bgColor 1531263542
-- LQ sweep retained as confluence factor (odds enhancer, not mandatory for with-trend)
-
-### Active files
-- `prefilter.txt` — single pair pre-filter: reads Trend Direction Pro + location + path check → VALID/CAUTION/SKIP
-- `analysis-prompt.txt` — full analysis: confirms bias, location, BOS/MSS, OTE entry, FVG → summary card + full detail
-- `batch-prefilter.txt` — 20 pair batch scanner using same prefilter logic → ranked table + EQ watchlist
-- `log-trade.txt` — post-analysis journal pre-fill matching current PxD journal form fields
+## Status — July 6 (Night 1: inventory complete)
+- EntryLevels.pine: rendering layer GOOD (reuse for v2); leg-selection brain is naive recency (no MSS/BOS gate) — fibs internal legs, replace entirely per SPEC v2
+- Toolkit v3: MSS/BOS module already close-based (spec-compliant); HTF Context = v0 of Location Engine BUT uses lookahead_on (REPAINTS) — DO-NOT-CONSUME by any tool/module; DELETE from toolkit on v1 cutover. Owner never uses its shading (location is manual fib, 2-window Daily/4H setup) — no live contamination
+- Toolkit equal-pivot inconsistency: labels use >=, trend uses strict > — validation log note
+- Live chart swing period = 6, code default = 5 — align in v2
+- Next: Night 2 = ZigZag 12/3/1 port, verify pivot-for-pivot vs paid tool on EURUSD D+4H
 
 ## System Rules
 
