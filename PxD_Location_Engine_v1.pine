@@ -1,0 +1,136 @@
+//@version=5
+// ═══════════════════════════════════════════════════════════════════
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 2 (Layer 1 Pivot Engine)
+// Per SPEC.md v1.1 — MT4-style ZigZag, Depth/Deviation/Backstep
+// IRON LAW: only CONFIRMED pivots exist. The developing extreme is
+// drawn dotted and is NOT a pivot — it feeds nothing downstream.
+// Night 3 will add: structure labels + regime state machine.
+// ═══════════════════════════════════════════════════════════════════
+indicator("PxD Location Engine v1", overlay=true, max_lines_count=500, max_labels_count=500, max_bars_back=5000)
+
+// ── Inputs — Layer 1 Pivot Engine ───────────────────────────────────
+grp      = "Pivot Engine (Layer 1 — ZigZag)"
+depth    = input.int(12, "Depth (min bars to form a new pivot)", minval=2,  group=grp)
+devTicks = input.int(3,  "Deviation (min ticks to form a new pivot)", minval=0, group=grp)
+backstep = input.int(1,  "Backstep (bars to confirm)", minval=1, group=grp)
+showDev  = input.bool(true, "Show developing (unconfirmed) leg", group=grp)
+showDots = input.bool(true, "Show pivot markers", group=grp)
+zzColor  = input.color(color.new(#f0c040, 0), "Confirmed ZigZag Color", group=grp)
+devColor = input.color(color.new(color.gray, 40), "Developing Leg Color", group=grp)
+lineW    = input.int(2, "Line Width", minval=1, maxval=4, group=grp)
+
+grpDbg   = "Verification Aids (Night 2 only)"
+showTbl  = input.bool(true, "Show pivot verification table", group=grpDbg)
+tblRows  = input.int(10, "Pivots listed in table", minval=5, maxval=20, group=grpDbg)
+
+dev = devTicks * syminfo.mintick
+
+// ── Window extremum qualification ───────────────────────────────────
+// A bar qualifies as a potential pivot only if it is the extreme of the
+// trailing Depth-bar window ("minimum bars required to form a new pivot").
+isWinHigh = ta.highestbars(high, depth) == 0
+isWinLow  = ta.lowestbars(low,  depth) == 0
+
+// ── ZigZag state machine ─────────────────────────────────────────────
+// dir = +1 : current CANDIDATE is a high (seeking extension up / reversal down)
+// dir = -1 : current CANDIDATE is a low
+// dir =  0 : uninitialized (cold start — converges within first Depth bars)
+var int   dir     = 0
+var float candPx  = na
+var int   candBar = na
+
+// Confirmed pivot storage (newest at end). dir arrays: +1 = high, -1 = low
+var array<float> zzPx  = array.new_float()
+var array<int>   zzBar = array.new_int()
+var array<int>   zzDir = array.new_int()
+var array<line>  zzLn  = array.new<line>()
+var array<label> zzLb  = array.new<label>()
+
+MAXPIV = 120  // storage cap; drawings pruned with it
+
+f_confirm(float px, int bx, int d) =>
+    // previous confirmed pivot (if any) anchors the line into this one
+    if array.size(zzPx) > 0
+        pPx = array.get(zzPx, array.size(zzPx) - 1)
+        pBx = array.get(zzBar, array.size(zzBar) - 1)
+        array.push(zzLn, line.new(pBx, pPx, bx, px, color=zzColor, width=lineW))
+    if showDots
+        array.push(zzLb, label.new(bx, px, d == 1 ? "●" : "●",
+             color=color.new(color.white, 100), textcolor=zzColor,
+             style=d == 1 ? label.style_label_down : label.style_label_up, size=size.tiny))
+    array.push(zzPx, px)
+    array.push(zzBar, bx)
+    array.push(zzDir, d)
+    // prune storage + drawings beyond cap
+    if array.size(zzPx) > MAXPIV
+        array.shift(zzPx), array.shift(zzBar), array.shift(zzDir)
+        if array.size(zzLn) > 0
+            line.delete(array.shift(zzLn))
+        if array.size(zzLb) > 0
+            label.delete(array.shift(zzLb))
+
+// ── Per-bar logic ────────────────────────────────────────────────────
+// NOTE bar-order rule: extension is evaluated before reversal. On a bar
+// that qualifies as BOTH window-high and window-low (rare giant bar),
+// the current direction extends first; reversal needs the next bar.
+// Deterministic by construction — same input, same output, every run.
+if dir == 0
+    if isWinHigh
+        dir     := 1
+        candPx  := high
+        candBar := bar_index
+    else if isWinLow
+        dir     := -1
+        candPx  := low
+        candBar := bar_index
+else if dir == 1
+    // extend candidate high
+    if isWinHigh and high >= candPx
+        candPx  := high
+        candBar := bar_index
+    // qualified reversal → the candidate HIGH becomes a CONFIRMED pivot
+    if isWinLow and (candPx - low >= dev) and (bar_index - candBar >= backstep)
+        f_confirm(candPx, candBar, 1)
+        dir     := -1
+        candPx  := low
+        candBar := bar_index
+else if dir == -1
+    if isWinLow and low <= candPx
+        candPx  := low
+        candBar := bar_index
+    if isWinHigh and (high - candPx >= dev) and (bar_index - candBar >= backstep)
+        f_confirm(candPx, candBar, -1)
+        dir     := 1
+        candPx  := high
+        candBar := bar_index
+
+// ── Developing (unconfirmed) leg — display only, feeds NOTHING ───────
+var line devLine = na
+if barstate.islast and showDev and array.size(zzPx) > 0 and not na(candPx)
+    if na(devLine)
+        devLine := line.new(na, na, na, na, style=line.style_dotted, color=devColor, width=lineW)
+    lPx = array.get(zzPx, array.size(zzPx) - 1)
+    lBx = array.get(zzBar, array.size(zzBar) - 1)
+    line.set_xy1(devLine, lBx, lPx)
+    line.set_xy2(devLine, candBar, candPx)
+    line.set_color(devLine, devColor)
+
+// ── Verification table (Night 2 aid — remove after gate passes) ──────
+// Lists newest confirmed pivots: type, price, bars ago. Count these
+// against the paid tool's zigzag. Newest at top.
+var table vt = table.new(position.bottom_right, 3, tblRows + 2, bgcolor=color.new(color.black, 20), border_width=1, border_color=color.new(color.gray, 70))
+if barstate.islast and showTbl
+    n = array.size(zzPx)
+    table.cell(vt, 0, 0, "Pivot",   text_color=#f0c040, text_size=size.small)
+    table.cell(vt, 1, 0, "Price",   text_color=#f0c040, text_size=size.small)
+    table.cell(vt, 2, 0, "Bars ago",text_color=#f0c040, text_size=size.small)
+    rows = math.min(tblRows, n)
+    if rows > 0
+        for i = 0 to rows - 1
+            idx = n - 1 - i
+            d   = array.get(zzDir, idx)
+            table.cell(vt, 0, i + 1, d == 1 ? "H" : "L", text_color=d == 1 ? color.red : color.lime, text_size=size.small)
+            table.cell(vt, 1, i + 1, str.tostring(array.get(zzPx, idx), format.mintick), text_color=color.white, text_size=size.small)
+            table.cell(vt, 2, i + 1, str.tostring(bar_index - array.get(zzBar, idx)), text_color=color.white, text_size=size.small)
+    table.cell(vt, 0, rows + 1, "Total confirmed:", text_color=color.gray, text_size=size.small)
+    table.cell(vt, 1, rows + 1, str.tostring(n), text_color=color.white, text_size=size.small)
