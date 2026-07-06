@@ -1,9 +1,12 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════
-// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev G (cumulative)
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev H (cumulative)
 // Night 2 ✔ Layer 1 ZigZag (gate passed 50/50 EURUSD D+4H)
 // Night 3 ✔ Structure + regime machine (gate passed 8/8, rev D)
 // Night 4 ▶ Location module + hybrid verdict matrix + MTF dashboard
+//   rev H: EQ verdict renders "EQ (NO TRADE)" — cause on its face,
+//          disambiguates from NO ACTION on fast scans. Strings FREEZE
+//          at first validation log entry.
 //   rev G: dashboard rows ordered chart-TF-first (mirrors the paid
 //          tool's convention: its top row is always the chart's TF)
 //   rev F: verdict + color functions flattened to plain if/else
@@ -237,7 +240,7 @@ f_verdict(reg, cnt, loc) =>
         // direction state: SIDE / UP / DOWN / UBULL / UBEAR
         string d = reg == 0 ? "SIDE" : cnt >= 2 ? (reg == 1 ? "UP" : "DOWN") : (reg == 1 ? "UBULL" : "UBEAR")
         if b == 0
-            v := "NO TRADE"
+            v := "EQ (NO TRADE)"
         else if b == -1   // Discount
             if d == "UP"
                 v := "LONG VALID"
@@ -262,7 +265,7 @@ f_verdictCol(v) =>
         c := color.red
     else if v == "CT WATCH"
         c := color.orange
-    else if v == "NO TRADE"
+    else if v == "EQ (NO TRADE)"
         c := color.gray
     c
 

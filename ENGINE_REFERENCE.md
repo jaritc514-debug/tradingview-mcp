@@ -13,7 +13,7 @@
 | **LONG VALID (rng)** | Discount + Sideways OR Unconfirmed Bullish | Bounce trade. Range floor, or fresh bullish break at cheap location (trade #1 anatomy). | Long allowed. ROTATION targets (EQ / range top). Humble exits. Do NOT hold like a trend trade. |
 | **SHORT VALID (rng)** | Premium + Sideways OR Unconfirmed Bearish | Ball at the ceiling / fresh bearish break, expensive. | Short allowed. Rotation targets. Take profit early. |
 | **CT WATCH** | Any fade: Disc+Down, Prem+Up, or fading a fresh unconfirmed break | The 88% club — ON PROBATION (n≥20 decides). | NOT a signal. A summons: manual review + strong HTF zone REQUIRED. Log it whether taken or skipped. |
-| **NO TRADE** | Location 40–60% (EQ), any trend | Dead center. No edge. | Nothing. Absolute. Trade #6 is the tombstone. Set 40/60 alerts, walk away. |
+| **EQ (NO TRADE)** | Location 40–60%, any trend | Dead center. No edge. Tag names the cause — do not confuse with NO ACTION. | Nothing. Absolute. Trade #6 is the tombstone. Set 40/60 alerts, walk away. |
 | **NO ACTION** | Residual cell | Matches nothing tradeable. | Nothing. |
 | **—** (dash) | No computable location | Engine honestly says "I don't know." | Chart it manually or skip the pair. |
 
