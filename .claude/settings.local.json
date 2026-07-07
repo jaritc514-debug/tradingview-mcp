@@ -22,14 +22,9 @@
       "mcp__tradingview__pine_set_source",
       "mcp__tradingview__ui_open_panel",
       "mcp__tradingview__ui_click",
-      "mcp__tradingview__pine_get_source",
       "mcp__tradingview__pine_open",
-      "mcp__tradingview__ui_evaluate",
-      "mcp__tradingview__data_get_indicator",
-      "mcp__tradingview__indicator_set_inputs",
-      "mcp__tradingview__watchlist_get",
-      "mcp__tradingview__ui_mouse_click",
-      "mcp__tradingview__tv_launch"
+      "mcp__tradingview__pine_get_source",
+      "mcp__tradingview__pine_list_scripts"
     ]
   }
 }

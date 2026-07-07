@@ -139,6 +139,7 @@ Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines')
 - Known diffs for validation log: (1) equal-pivot convention (labels >= vs strict >), (2) engine registers shallow-window pivots the paid tool skips in strong trends (USDJPY 4H, 2/25 extra) — possible earlier Confirmed status, watch during validation
 - Next: Night 4 = location module + verdict matrix + MTF dashboard (1D+4H rows). Night 4 GATE requires fresh eyes — manual fib comparison on 5 pairs, NOT to be run end-of-shift
 - Night 4 code COMPILED (rev G committed) — location + hybrid verdict + MTF dashboard + chart-TF-first rows. GATE NOT RUN. Gate = fresh eyes: manual fib vs engine leg lines on 5 pairs Daily, verdict cells traced to SPEC matrix. First live verdicts sane: EURUSD D 21.6% CT WATCH ✔, 4H 58.5% NO TRADE ✔
+- TWIN ALERT (from home PC merge): pxd_toolkit_modified.pine (40.8KB) vs pxd_toolkit_v3.pine (53KB) — diff and resolve before any v2 work; one toolkit file survives
 
 ## System Rules
 
