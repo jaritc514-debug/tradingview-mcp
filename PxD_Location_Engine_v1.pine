@@ -1,9 +1,16 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════
-// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev H (cumulative)
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev I (cumulative)
 // Night 2 ✔ Layer 1 ZigZag (gate passed 50/50 EURUSD D+4H)
 // Night 3 ✔ Structure + regime machine (gate passed 8/8, rev D)
 // Night 4 ▶ Location module + hybrid verdict matrix + MTF dashboard
+//   rev I: STALE-ORIGIN FIX (gate finding, AUDNZD Bin-1): in a fast
+//          break, the true extreme may confirm AFTER the break fires,
+//          leaving the leg anchored to an older pivot. Now, when a
+//          pivot confirms that (a) formed at/before the break bar and
+//          (b) is more extreme than the current leg origin, the origin
+//          is corrected to it. One bar late, lands on truth. Confirmed
+//          pivots only — no-repaint law intact.
 //   rev H: EQ verdict renders "EQ (NO TRADE)" — cause on its face,
 //          disambiguates from NO ACTION on fast scans. Strings FREEZE
 //          at first validation log entry.
@@ -97,9 +104,10 @@ f_engine() =>
     var bool  hiBroken = false
     var bool  loBroken = false
     // leg state
-    var float legHi       = na
-    var float legLo       = na
-    var bool  legAnchored = false
+    var float legHi        = na
+    var float legLo        = na
+    var bool  legAnchored  = false
+    var int   legAnchorBar = na
 
     bool  doConf  = false
     float confPx  = na
@@ -152,6 +160,10 @@ f_engine() =>
                     regCount := regCount + 1
                 else if confCls == 1
                     regCount := 0    // wick-made HH, no close-break: reset, regime survives
+            // rev I stale-origin fix: this high formed before the break
+            // and exceeds the bearish leg's origin → origin was stale, correct it
+            if legAnchored and regime == -1 and not na(legAnchorBar) and confBar <= legAnchorBar and confPx > legHi
+                legHi := confPx
             lastHi   := confPx
             refHi    := confPx
             hiBroken := false        // fresh high = fresh break reference
@@ -163,6 +175,9 @@ f_engine() =>
                     regCount := regCount + 1
                 else if confCls == -1
                     regCount := 0    // wick-made LL, no close-break: reset, survive
+            // rev I mirror: stale low origin in a bullish leg
+            if legAnchored and regime == 1 and not na(legAnchorBar) and confBar <= legAnchorBar and confPx < legLo
+                legLo := confPx
             lastLo   := confPx
             refLo    := confPx
             loBroken := false
@@ -178,17 +193,19 @@ f_engine() =>
             if regime <= 0
                 regime   := 1
                 regCount := lastLoCls == 1 ? 1 : 0
-            legLo       := nz(lastLo, low)
-            legHi       := high
-            legAnchored := true
+            legLo        := nz(lastLo, low)
+            legHi        := high
+            legAnchored  := true
+            legAnchorBar := bar_index
         else if not na(refLo) and not loBroken and close < refLo - buf
             loBroken := true
             if regime >= 0
                 regime   := -1
                 regCount := lastHiCls == -1 ? 1 : 0
-            legHi       := nz(lastHi, high)
-            legLo       := low
-            legAnchored := true
+            legHi        := nz(lastHi, high)
+            legLo        := low
+            legAnchored  := true
+            legAnchorBar := bar_index
 
     // post-break extreme extends with the trend
     if legAnchored
