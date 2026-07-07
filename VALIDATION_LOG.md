@@ -14,11 +14,11 @@ PASS = all agree, OR every disagreement binned with its one-sentence rule.
 |-|-|-|-|-|-|-|-|-|-|-|
 |AUDUSD|0.72777|0.68334|25.9|Disc|0.72777|0.68334|25.9|Disc|Yes||
 |USDJPY|162.840|155.032|90.9|Prem|162.840 (developing leg H)|155.032|90.9|Prem|Yes||
-|AUDNZD|1.22869|1.19859|69|Prem|1.22346|1.19859|84.5|Prem|leg NO, zone yes (luck)|1 — rule-gap, engine side /"Leg origin must be the true high of the move that broke — engine anchored to a stale high because confirmation lagged the breakdown."|
-|EURUSD|1.17967|1.13246|25|Disc|1.17967|1.13246|25|Disc|Yes| "leg low = unconfirmed running extreme — correct per breathing-endpoint rule, both sides agree."|
+|AUDNZD|1.22869|1.19859|69|Prem|1.22346|1.19859|84.5|Prem|leg NO, zone yes (luck)|1 — rule-gap, engine side /"Leg origin must be the true high of the move that broke — engine anchored to|
+|EURUSD|1.17967|1.13246|25|Disc|1.17967|1.13246|25|Disc|Yes|"leg low = unconfirmed running extreme — correct per breathing-endpoint rule, both sides agree."|
 |GBPJPY|217.219|212.400|92|Prem|217.219|212.400|92|Prem|Yes|same as EURUSD but bearish situation|
 
-**GATE VERDICT:** ☐ PASSED ☐ FAILED — notes:
+**GATE VERDICT:** x☐ PASSED ☐ FAILED — notes:4/5 match, 1/5 Bin-1 (AUDNZD stale origin — fixed rev I, re-check clean, engine now 1.22869/\~69% matching manual). Seals per amended markup-as-seal protocol; GBPJPY pristine.
 
 \---
 
@@ -36,7 +36,7 @@ PASS = all agree, OR every disagreement binned with its one-sentence rule.
 
 ## C. DISAGREEMENT LOG (ongoing — one line per event, spec §8 format)
 
-`DATE | PAIR TF | engine: X | paid: Y | my blind read: Z | hindsight: \\\_\\\_ | bin: rule-gap / freelance / discretion / known-diff #`
+`DATE | PAIR TF | engine: X | paid: Y | my blind read: Z | hindsight: \\\\\\\\\\\\\\\_\\\\\\\\\\\\\\\_ | bin: rule-gap / freelance / discretion / known-diff #`
 
 * 
 

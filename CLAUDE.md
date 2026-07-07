@@ -140,6 +140,7 @@ Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines')
 - Next: Night 4 = location module + verdict matrix + MTF dashboard (1D+4H rows). Night 4 GATE requires fresh eyes — manual fib comparison on 5 pairs, NOT to be run end-of-shift
 - Night 4 code COMPILED (rev G committed) — location + hybrid verdict + MTF dashboard + chart-TF-first rows. GATE NOT RUN. Gate = fresh eyes: manual fib vs engine leg lines on 5 pairs Daily, verdict cells traced to SPEC matrix. First live verdicts sane: EURUSD D 21.6% CT WATCH ✔, 4H 58.5% NO TRADE ✔
 - TWIN ALERT (from home PC merge): pxd_toolkit_modified.pine (40.8KB) vs pxd_toolkit_v3.pine (53KB) — diff and resolve before any v2 work; one toolkit file survives
+- Night 4 GATE PASSED (4/5 match, 1/5 Bin-1: AUDNZD stale leg origin — fixed in rev I, re-check verified vs manual fib). LOCATION MODULE CERTIFIED. Remaining: section B mechanical checks, then Night 5 = alerts + MCP diff harness, then validation clock starts.
 
 ## System Rules
 
