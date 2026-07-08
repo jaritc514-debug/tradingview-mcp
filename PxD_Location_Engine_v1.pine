@@ -1,9 +1,10 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════
-// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev K (cumulative)
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev L (cumulative)
 // Night 2 ✔ Layer 1 ZigZag (gate passed 50/50 EURUSD D+4H)
 // Night 3 ✔ Structure + regime machine (gate passed 8/8, rev D)
 // Night 4 ▶ Location module + hybrid verdict matrix + MTF dashboard
+//   rev L: display toggle — zigzag lines on/off (cosmetic only)
 //   rev K: REGIME-FLIP RE-ANCHOR (stale-leg mini-gate finding): the
 //          leg ALSO re-anchors when the regime actually FLIPS direction
 //          (true MSS). Completes the rule: leg dies by (1) close past
@@ -61,6 +62,7 @@ grp      = "Pivot Engine (Layer 1 — ZigZag)"
 depth    = input.int(12, "Depth (min bars to form a new pivot)", minval=2,  group=grp)
 devTicks = input.int(3,  "Deviation (min ticks to form a new pivot)", minval=0, group=grp)
 backstep = input.int(1,  "Backstep (bars to confirm)", minval=1, group=grp)
+showZZ   = input.bool(true, "Show ZigZag lines", group=grp)
 showDev  = input.bool(true, "Show developing (unconfirmed) leg", group=grp)
 showDots = input.bool(false, "Show pivot markers", group=grp)
 zzColor  = input.color(color.new(#f0c040, 0), "Confirmed ZigZag Color", group=grp)
@@ -352,7 +354,7 @@ var array<label> zzLb  = array.new<label>()
 MAXPIV = 120
 
 if doC
-    if array.size(zzPx) > 0
+    if showZZ and array.size(zzPx) > 0
         pPx = array.get(zzPx, array.size(zzPx) - 1)
         pBx = array.get(zzBar, array.size(zzBar) - 1)
         array.push(zzLn, line.new(pBx, pPx, cBarC, cPxC, color=zzColor, width=lineW))
