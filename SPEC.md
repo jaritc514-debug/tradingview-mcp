@@ -130,3 +130,8 @@ COUNTER-TREND WATCH is ON PROBATION (n=8, 88% WR as of Jul 5 journal): promote t
 13. Amendment 1: two-resolution architecture — Layer 1 ZigZag 12/3/1 for ALL v1 verdicts (1D + 4H rows, trend AND location); Layer 2 period-6 swing pivots for v2 entry legs only
 14. 4H location → coarse Depth-12 structure (confirmed by owner)
 15. Validation → three-way blind protocol (engine vs paid tool vs owner's sealed manual reads)
+
+## Amendment Log 2 (July 7)
+16. Amendment 2 (rev J): location leg re-anchors ONLY on close beyond its own stamped endpoints — interior breaks flip regime but never redraw the leg. Verified: EURUSD replay + all gate rows.
+17. Amendment 3 (rev K): leg ALSO re-anchors on a true regime flip (MSS-class). Verified: GBPCHF + CADJPY mini-gate. Synthesis: leg dies by endpoint break (BOS-class) or trend flip (MSS-class), nothing else.
+18. Open watch items: AUDCHF + GBPAUD — on fresh unconfirmed flips, owner's hands hold the prior dominant leg until the new direction builds multi-BOS structure; engine takes the flip-leg immediately. Both cases fail safe (same/adjacent zone, no verdict divergence). Collect sister cases during validation before any rev L.

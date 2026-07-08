@@ -1,9 +1,22 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════
-// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev I (cumulative)
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev K (cumulative)
 // Night 2 ✔ Layer 1 ZigZag (gate passed 50/50 EURUSD D+4H)
 // Night 3 ✔ Structure + regime machine (gate passed 8/8, rev D)
 // Night 4 ▶ Location module + hybrid verdict matrix + MTF dashboard
+//   rev K: REGIME-FLIP RE-ANCHOR (stale-leg mini-gate finding): the
+//          leg ALSO re-anchors when the regime actually FLIPS direction
+//          (true MSS). Completes the rule: leg dies by (1) close past
+//          its own stamped endpoints [rev J / BOS-class] or (2) a real
+//          trend flip [MSS-class]. Pullbacks that flip nothing change
+//          nothing. Matches: EURUSD Apr (no flip, leg held) vs
+//          GBPCHF/CADJPY/AUDCHF (flipped, hands re-anchored).
+//   rev J: ENDPOINT-PERSISTENCE (Spec Amendment 2, replay finding):
+//          the location leg re-anchors ONLY when price CLOSES beyond
+//          one of its own STAMPED endpoints (origin, or most extreme
+//          confirmed pivot on the running side). Interior breaks flip
+//          regime/trend (certified, unchanged) but never redraw the
+//          measuring stick. Matches owner's hands: gate rows + replay.
 //   rev I: STALE-ORIGIN FIX (gate finding, AUDNZD Bin-1): in a fast
 //          break, the true extreme may confirm AFTER the break fires,
 //          leaving the leg anchored to an older pivot. Now, when a
@@ -108,6 +121,9 @@ f_engine() =>
     var float legLo        = na
     var bool  legAnchored  = false
     var int   legAnchorBar = na
+    var int   legDir       = 0    // +1 bull leg (low origin), -1 bear leg (high origin)
+    var float stampHi      = na   // most extreme CONFIRMED pivot on a bull leg's running side
+    var float stampLo      = na   // mirror for bear leg
 
     bool  doConf  = false
     float confPx  = na
@@ -160,10 +176,12 @@ f_engine() =>
                     regCount := regCount + 1
                 else if confCls == 1
                     regCount := 0    // wick-made HH, no close-break: reset, regime survives
-            // rev I stale-origin fix: this high formed before the break
-            // and exceeds the bearish leg's origin → origin was stale, correct it
-            if legAnchored and regime == -1 and not na(legAnchorBar) and confBar <= legAnchorBar and confPx > legHi
+            // rev I stale-origin fix (rekeyed to leg direction in rev J)
+            if legAnchored and legDir == -1 and not na(legAnchorBar) and confBar <= legAnchorBar and confPx > legHi
                 legHi := confPx
+            // rev J: track stamped running extreme of a BULL leg
+            if legAnchored and legDir == 1
+                stampHi := na(stampHi) ? confPx : math.max(stampHi, confPx)
             lastHi   := confPx
             refHi    := confPx
             hiBroken := false        // fresh high = fresh break reference
@@ -175,9 +193,12 @@ f_engine() =>
                     regCount := regCount + 1
                 else if confCls == -1
                     regCount := 0    // wick-made LL, no close-break: reset, survive
-            // rev I mirror: stale low origin in a bullish leg
-            if legAnchored and regime == 1 and not na(legAnchorBar) and confBar <= legAnchorBar and confPx < legLo
+            // rev I mirror (rekeyed to leg direction in rev J)
+            if legAnchored and legDir == 1 and not na(legAnchorBar) and confBar <= legAnchorBar and confPx < legLo
                 legLo := confPx
+            // rev J: track stamped running extreme of a BEAR leg
+            if legAnchored and legDir == -1
+                stampLo := na(stampLo) ? confPx : math.min(stampLo, confPx)
             lastLo   := confPx
             refLo    := confPx
             loBroken := false
@@ -188,30 +209,57 @@ f_engine() =>
     // displacement leg re-anchors: origin = most recent confirmed
     // opposite pivot, extreme = post-break running extreme.
     if barstate.isconfirmed or barstate.ishistory
+        // ── regime flips (CERTIFIED 8/8 — logic unchanged) ──
         if not na(refHi) and not hiBroken and close > refHi + buf
             hiBroken := true
             if regime <= 0
                 regime   := 1
                 regCount := lastLoCls == 1 ? 1 : 0
-            legLo        := nz(lastLo, low)
-            legHi        := high
-            legAnchored  := true
-            legAnchorBar := bar_index
+                // rev K: a true regime FLIP re-anchors the leg (MSS-class)
+                legLo        := nz(lastLo, low)
+                legHi        := high
+                legDir       := 1
+                stampHi      := na
+                legAnchored  := true
+                legAnchorBar := bar_index
         else if not na(refLo) and not loBroken and close < refLo - buf
             loBroken := true
             if regime >= 0
                 regime   := -1
                 regCount := lastHiCls == -1 ? 1 : 0
-            legHi        := nz(lastHi, high)
-            legLo        := low
-            legAnchored  := true
-            legAnchorBar := bar_index
+                // rev K mirror: bearish flip re-anchors
+                legHi        := nz(lastHi, high)
+                legLo        := low
+                legDir       := -1
+                stampLo      := na
+                legAnchored  := true
+                legAnchorBar := bar_index
 
-    // post-break extreme extends with the trend
+        // ── rev J: ENDPOINT-PERSISTENCE re-anchor ──
+        // The leg dies only when a candle CLOSES beyond one of its own
+        // stamped endpoints. Bull leg: origin low / stamped running high.
+        // Bear leg: origin high / stamped running low.
+        if legAnchored
+            float upRef = legDir == 1 ? stampHi : legHi
+            float dnRef = legDir == 1 ? legLo   : stampLo
+            if not na(upRef) and close > upRef + buf
+                legLo        := nz(lastLo, low)
+                legHi        := high
+                legDir       := 1
+                stampHi      := na
+                legAnchorBar := bar_index
+            else if not na(dnRef) and close < dnRef - buf
+                legHi        := nz(lastHi, high)
+                legLo        := low
+                legDir       := -1
+                stampLo      := na
+                legAnchorBar := bar_index
+
+    // running extreme breathes with the LEG's direction (rev J: was regime-keyed)
     if legAnchored
-        if regime == 1
+        if legDir == 1
             legHi := math.max(legHi, high)
-        else if regime == -1
+        else if legDir == -1
             legLo := math.min(legLo, low)
 
     // ── Location: displacement leg primary, adjacent-pair fallback ──
