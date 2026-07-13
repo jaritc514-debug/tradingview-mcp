@@ -53,6 +53,21 @@ PASS = all agree, OR every disagreement binned with its one-sentence rule.
 * \- Jul 7 | WATCH | AUDCHF: flip re-anchor gave smaller leg than my major-leg read — collect sister cases during validation before any rev L
 * \- Jul 7 | WATCH | GBPAUD: sister case #2 — fresh unconfirmed flip, engine took flip-leg (77.7% Prem), my hands hold prior dominant leg (\~82% Prem) — same zone/verdict, fails safe
 
+* Jul 12 | EURUSD 4H | engine: Confirmed/Bullish | paid: Unconfirmed/Bearish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | AUDUSD 4H | engine: Unconfirmed/Bullish | paid: Confirmed/Bullish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | GBPUSD 4H | engine: Unconfirmed/Bullish | paid: Confirmed/Bullish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | GBPUSD D | engine: Unconfirmed/Bearish | paid: Confirmed/Bearish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | USDCHF 4H | engine: Confirmed/Bearish | paid: Unconfirmed/Bullish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | AUDJPY 4H | engine: Unconfirmed/Bullish | paid: Unconfirmed/Bearish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | AUDJPY D | engine: Confirmed/Bullish | paid: Unconfirmed/Bearish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | CADCHF 4H | engine: Unconfirmed/Bullish | paid: Confirmed/Bullish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | EURCAD 4H | engine: Unconfirmed/Bearish | paid: Confirmed/Bearish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | EURCHF 4H | engine: Unconfirmed/Bearish | paid: Unconfirmed/Bullish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | EURGBP 4H | engine: Unconfirmed/Bearish | paid: Confirmed/Bearish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | NZDJPY 4H | engine: Unconfirmed/Bullish | paid: Confirmed/Bullish | my blind read: (blank) | hindsight: __ | bin: __
+* Jul 12 | HARNESS RUN | 20 pairs read, 12 mismatches
+* Jul 12 | RUN CONTEXT | first harness run executed minutes after Sunday open — thin-liquidity sweeps active on multiple pairs; direction mismatches likely sweep-driven (paid flips on sweep, engine waits for close per spec). Grade in hindsight. Future runs: after a settled 4H close, not at the open.
+
 \---
 
 ## D. KNOWN DIFFS (pre-approved — log occurrences, do not panic)
@@ -68,4 +83,31 @@ PASS = all agree, OR every disagreement binned with its one-sentence rule.
 `DATE | PAIR TF | Hybrid says: | Pure-A would say: | Pure-B would say: | hindsight right answer:`
 
 * 
+* Jul 12 | AUDUSD 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | AUDUSD D | Hybrid says: LONG VALID (rng) | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | GBPUSD 4H | Hybrid says: EQ (NO TRADE) | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | GBPUSD D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | NZDUSD 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | NZDUSD D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | USDCHF D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | USDJPY 4H | Hybrid says: SHORT VALID (rng) | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | USDJPY D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | AUDJPY 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | AUDNZD D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | CADCHF 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | CADJPY 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | CADJPY D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | CHFJPY 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURCAD 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURCAD D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURCHF 4H | Hybrid says: SHORT VALID (rng) | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURCHF D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURGBP 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURJPY 4H | Hybrid says: EQ (NO TRADE) | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | EURJPY D | Hybrid says: EQ (NO TRADE) | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | GBPCAD D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | GBPCHF D | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | GBPJPY 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | NZDJPY 4H | Hybrid says: CT WATCH | Pure-A would say: | Pure-B would say: | hindsight right answer:
+* Jul 12 | NZDJPY D | Hybrid says: EQ (NO TRADE) | Pure-A would say: | Pure-B would say: | hindsight right answer:
 
