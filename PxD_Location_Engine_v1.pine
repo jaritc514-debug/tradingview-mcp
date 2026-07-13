@@ -1,9 +1,15 @@
 //@version=5
 // ═══════════════════════════════════════════════════════════════════
-// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 4 rev L (cumulative)
+// PxD LOCATION ENGINE v1 — BUILD STAGE: Night 5 rev N (cumulative)
 // Night 2 ✔ Layer 1 ZigZag (gate passed 50/50 EURUSD D+4H)
 // Night 3 ✔ Structure + regime machine (gate passed 8/8, rev D)
 // Night 4 ▶ Location module + hybrid verdict matrix + MTF dashboard
+//   rev N: hunt alert fires on every NEW 4H LEG (flip = MSS-class,
+//          OR continuation endpoint-break = BOS-class) while the
+//          Daily zone agrees. One ping per fresh displacement leg —
+//          each fibbable leg announces itself. Upgrades/interior
+//          noise/EQ still silent. LTF (15m) out of scope by decision.
+//   rev M: chained flip-only alert (superseded by rev N)
 //   rev L: display toggle — zigzag lines on/off (cosmetic only)
 //   rev K: REGIME-FLIP RE-ANCHOR (stale-leg mini-gate finding): the
 //          leg ALSO re-anchors when the regime actually FLIPS direction
@@ -82,6 +88,8 @@ legLoCol = input.color(color.new(color.lime, 30), "Leg Low Color",  group=grpL)
 
 grpD     = "Dashboard"
 showDash = input.bool(true, "Show MTF dashboard (D + 4H)", group=grpD)
+grpA     = "Alerts (Night 5)"
+enHunt   = input.bool(true, "Enable HUNT OPEN alert (4H flip + Daily zone agreement)", group=grpA)
 dashPos  = input.string("Bottom Right", "Dashboard Position", options=["Top Left","Top Right","Bottom Left","Bottom Right","Middle Right"], group=grpD)
 
 grpDbg   = "Verification Aids"
@@ -272,7 +280,7 @@ f_engine() =>
     if not na(useHi) and not na(useLo) and useHi > useLo
         locPct := (close - useLo) / (useHi - useLo) * 100
 
-    [regime, regCount, locPct, useHi, useLo, isFallback, doConf, confPx, confBar, confDir, confCls]
+    [regime, regCount, locPct, useHi, useLo, isFallback, doConf, confPx, confBar, confDir, confCls, legAnchorBar, legDir]
 
 // ═════════════════════════════════════════════════════════════════
 // Pure display helpers (no state)
@@ -339,9 +347,27 @@ f_verdictCol(v) =>
 // ═════════════════════════════════════════════════════════════════
 // Three engine instances
 // ═════════════════════════════════════════════════════════════════
-[regC, cntC, locC, hiC, loC, fbC, doC, cPxC, cBarC, cDirC, cClsC] = f_engine()
-[regD, cntD, locD, hiD, loD, fbD, doD, cPxD, cBarD, cDirD, cClsD] = request.security(syminfo.tickerid, "D",   f_engine(), lookahead=barmerge.lookahead_off)
-[reg4, cnt4, loc4, hi4, lo4, fb4, do4, cPx4, cBar4, cDir4, cCls4] = request.security(syminfo.tickerid, "240", f_engine(), lookahead=barmerge.lookahead_off)
+[regC, cntC, locC, hiC, loC, fbC, doC, cPxC, cBarC, cDirC, cClsC, labC, ldC] = f_engine()
+[regD, cntD, locD, hiD, loD, fbD, doD, cPxD, cBarD, cDirD, cClsD, labD, ldD] = request.security(syminfo.tickerid, "D",   f_engine(), lookahead=barmerge.lookahead_off)
+[reg4, cnt4, loc4, hi4, lo4, fb4, do4, cPx4, cBar4, cDir4, cCls4, lab4, ld4] = request.security(syminfo.tickerid, "240", f_engine(), lookahead=barmerge.lookahead_off)
+
+// ═════════════════════════════════════════════════════════════════
+// rev M — CHAINED HUNT ALERT
+// Event: the 4H regime FLIPS this bar, in agreement with Daily zone.
+// reg4 comes from confirmed 4H bars only (engine law), so the flip
+// lands when the 4H candle closes — never mid-bar, never on a wick.
+// ═════════════════════════════════════════════════════════════════
+// A NEW 4H leg anchored this bar = legAnchorBar changed (flip OR
+// continuation endpoint-break — the two certified anchor events).
+newLeg4  = not na(lab4) and lab4 != nz(lab4[1], -1)
+legIsUp  = ld4 == 1
+zoneD    = f_bucket(locD)
+huntL    = enHunt and newLeg4 and legIsUp     and zoneD == -1   // fresh bull leg, Daily Discount
+huntS    = enHunt and newLeg4 and not legIsUp and zoneD == 1    // fresh bear leg, Daily Premium
+if huntL or huntS
+    string vDmsg  = f_verdict(regD, cntD, locD)
+    string kind   = reg4 != nz(reg4[1], 0) ? "flip" : "continuation BOS"
+    alert(syminfo.ticker + " HUNT OPEN (" + (huntL ? "LONG" : "SHORT") + "): new 4H leg (" + kind + ") | D: " + vDmsg + " " + f_locTxt(locD), alert.freq_once_per_bar)
 
 // ═════════════════════════════════════════════════════════════════
 // Chart-TF drawings (consume the chart instance's events)
