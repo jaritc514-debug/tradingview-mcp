@@ -66,6 +66,13 @@
     "hard_rule": "Never filter zones out based on trend. Trend is always reported alongside the zone, never used to exclude it."
   },
 
+  "valuation_confluence": {
+    "source": "Campus Valuation Tool — data_get_pine_tables(study_filter='Campus Valuation Tool') or data_get_study_values if it's not a table",
+    "status": "UNVERIFIED — exact output format (table vs. label, field names, value categories like undervalued/overvalued) has not been confirmed against the live indicator yet. Verify this first when live tool access is available, then fill in the real read method here.",
+    "rule": "Tag only, same as trend_confluence, pending confirmation. Never filter zones out based on valuation until explicitly revisited.",
+    "note": "A .ELD version of this tool exists in the trader's OTC course materials (TradeStation format) — the live TradingView version may differ in output. Confirm against what's actually on the chart, not assumptions from the .ELD file."
+  },
+
   "profit_check": {
     "description": "Is there a clean path out of the zone before the next opposing zone, or is it boxed in?",
     "method": "From the zone's edge, scan for the nearest opposing zone (Fresh or 1st Touch) in the direction price would move out of this zone.",
