@@ -1,166 +1,91 @@
 {
-  "watchlist": "Use my saved TradingView watchlist called X",
-  "default_timeframe": 240,
+  "watchlist": {
+    "fx_majors_and_crosses": "Use my saved TradingView watchlist for FX majors and cross pairs",
+    "currency_futures": "6E, 6B, 6A, 6J, 6C, 6S, 6N (Euro, Pound, Aussie, Yen, Loonie, Franc, Kiwi)",
+    "index_futures": "NQ, YM, ES, RTY (Nasdaq, Dow, S&P, Russell)",
+    "commodities": "GC, SI, CL and others as added"
+  },
 
-  "methodology": "One primary framework: OTE Entry using Killshot (70.5% fibonacci level). HTF S&D zones used as confluence only — not a separate entry framework. Do not mix entry logic.",
+  "methodology": "HTF Supply & Demand zone trading only. OTE/Killshot is now traded manually, outside this system. Scan Weekly and Daily zones from the Supply & Demand Pro indicator. A Daily zone sitting inside a Weekly zone is confluence (HTF Coverage), not a requirement. Trend Direction Pro bias is a confluence tag, never a hard filter.",
 
   "timeframe_hierarchy": {
-    "Daily": "Bias (trend direction) read directly from PxD Trend Engine v20 dashboard",
-    "4H": "Market timing, swing detection, confluence confirmation, and Killshot entry execution"
+    "Weekly": "Highest-timeframe zone context. A Weekly zone containing a Daily zone = HTF Coverage confluence.",
+    "Daily": "Primary zone timeframe scanned. Entry planning happens here."
   },
 
   "candle_classification": {
     "indecisive": {
-      "body_percent": "50% or less of total candle range (high to low)",
-      "implication": "Balance between supply and demand — orders being accumulated"
+      "body_percent": "49% or less of total candle range (high to low)",
+      "implication": "Balance between supply and demand — orders being accumulated. This is what forms a base."
     },
     "decisive": {
-      "body_percent": "More than 50% of total candle range",
-      "implication": "Institutional activity — one side consuming orders"
+      "body_percent": "50% to 75% of total candle range",
+      "implication": "Institutional activity — one side consuming orders. Can end a base (leg-out)."
     },
     "explosive": {
-      "body_percent": "More than 70% of total candle range AND abnormally bigger than surrounding candles",
-      "implication": "Clear institutional activity — strong imbalance"
-    }
+      "body_percent": "More than 75% of total candle range AND abnormally bigger than surrounding candles",
+      "implication": "Clear institutional activity — strong imbalance. Highest-quality leg-out."
+    },
+    "source": "Compute directly from data_get_ohlcv — not indicator-dependent."
   },
 
-  "location_analysis": {
-    "timeframe": "Daily",
-    "method": "Switch to Daily, read data_get_pine_labels(study_filter='PxD Toolkit') and filter for HH and LL labels. Identify the most recent HH (swing high) and most recent LL (swing low) — these define the current active swing range. Position = (current price − LL) / (HH − LL). Divide into 3 sections.",
-    "zones": {
-      "discount": "0% to 40% — look for longs only",
-      "equilibrium": "40% to 60% — NO TRADE regardless of direction",
-      "premium": "60% to 100% — look for shorts only"
-    },
-    "hard_rule": "Equilibrium = no trade. This is a hard filter, not a suggestion."
-  },
-
-  "direction_analysis": {
-    "timeframe": "Daily",
-    "method": "Read Trend and Status directly from PxD Trend Engine v20 dashboard. Do not perform independent pivot analysis — trust v20 output entirely.",
-    "output_fields": {
-      "Trend": "Bullish / Bearish / Sideways",
-      "Status": "Confirmed / Unconfirmed",
-      "Strength": "Trending / Ranging"
-    },
-    "sideways": {
-      "rule": "If Trend = Sideways — no trade regardless of location. Hard stop."
-    },
-    "unconfirmed_note": "Unconfirmed status on Daily does NOT require a liquidity grab check at the Daily level. Both Confirmed and Unconfirmed are valid if location aligns. Liquidity grab is only assessed on the 4H."
-  },
-
-  "action_matrix": {
-    "description": "Location + Direction must be assessed before any trade. Confirmed and Unconfirmed treated equally at Daily level.",
-    "bullish_discount": "Long — proceed to 4H entry rules regardless of Confirmed or Unconfirmed status",
-    "bearish_premium": "Short — proceed to 4H entry rules regardless of Confirmed or Unconfirmed status",
-    "bullish_premium": "No trade",
-    "bearish_discount": "No trade",
-    "equilibrium_any": "No trade — hard filter",
-    "sideways_any": "No trade — hard filter"
-  },
-
-  "liquidity_grab_rules": {
-    "definition": "A sweep of a previous swing high or low followed immediately by a reversal — price takes out liquidity then rejects",
-    "detection": "Read LQ labels from data_get_pine_labels(study_filter='PxD Toolkit'). LQ label with arrow = confirmed liquidity grab event",
-    "proximity_rule": "LQ label must appear immediately BEFORE the most recent BOS or MSS being analyzed — not anywhere on the chart history",
-    "with_trend_confirmed": "Liquidity grab = odds enhancer only. Not mandatory. Adds confluence when present.",
-    "counter_trend_4H": "Liquidity grab = MANDATORY on 4H before the MSS that signals the flip back in line with Daily bias. No LQ label before MSS = no trade.",
-    "hard_rule": "Counter trend setup without LQ label before MSS = no trade. Non-negotiable."
-  },
-
-  "counter_trend_logic": {
-    "definition": "4H trend moving against the Daily bias — MSS on 4H signals anticipated flip back in line with Daily",
-    "entry_1_MSS": "Enter at Killshot after MSS confirmation — anticipatory, higher risk, grade drops one level automatically",
-    "entry_2_BOS": "Enter at Killshot after subsequent BOS confirmation — safer, more confirmation, full grade maintained",
-    "invalidation_rule": "Once subsequent BOS confirms in the same direction as MSS — MSS entry is invalidated. Only BOS entry remains valid.",
-    "flag_requirement": "Always flag counter trend setups in output as COUNTER TREND — ELEVATED RISK"
-  },
-
-  "swing_detection": {
-    "source": "PxD Toolkit indicator labels — HH, HL, LH, LL",
-    "daily_location": "Use most recent HH as swing high and most recent LL as swing low to define current active leg for location calculation",
-    "4H_entry": "Identify the most recent BOS or MSS on 4H. Fib the pivot that CREATED that structural break — always the most recent HH/LL pair that formed the impulsive leg. For bearish: HH = swing high, LL = swing low. For bullish: LL = swing low, HH = swing high.",
-    "confirmation": "Always display detected swing high and swing low to user and request confirmation or override before calculating Killshot entry",
-    "hard_rule": "Never proceed to entry calculation without user confirming swing levels"
-  },
-
-  "framework_OTE_entry": {
-    "description": "Killshot entry using 70.5% Fibonacci retracement of last impulsive leg on 4H. Single entry level — currently backtesting 78.6 separately.",
-    "fibonacci_measurement": "Wick to wick — swing low wick to swing high wick",
-    "entry_level": "70.5% retracement only",
-    "entry_formula": {
-      "short": "Entry = swing_low + 0.705 × (swing_high − swing_low). Fib drawn from swing HIGH down to swing LOW. 0% = swing low (TP1), 100% = swing high (SL). Entry at 70.5% counting UP from swing low.",
-      "long": "Entry = swing_high − 0.705 × (swing_high − swing_low). Fib drawn from swing LOW up to swing HIGH. 0% = swing high (TP1), 100% = swing low (SL). Entry at 70.5% counting DOWN from swing high."
-    },
-    "sl_placement": "100% Fibonacci level + ATR buffer. Longs: swing low wick − (ATR × 0.10). Shorts: swing high wick + (ATR × 0.10).",
-    "tp1": "0% Fibonacci level — swing low for shorts, swing high for longs",
-    "tp2": "Next opposing 4H S&D zone beyond TP1",
-    "minimum_rr": "1:2",
-
-    "confluence_checklist": {
-      "description": "Assess all 4 in order. State each as confirmed or not confirmed.",
-      "1_location": "Price in discount (longs) or premium (shorts) on Daily. Confirmed from Step 1.",
-      "2_liquidity_sweep": {
-        "with_trend": "LQ label present before impulse = odds enhancer. Not mandatory. State: present / absent.",
-        "counter_trend": "LQ label before MSS = MANDATORY. No LQ label = no trade."
-      },
-      "3_bos_or_mss": {
-        "with_trend": "BOS confirmed on 4H — structural break in direction of Daily bias",
-        "counter_trend": "MSS confirmed on 4H — market structure shift signaling flip back to Daily bias"
-      },
-      "4_imbalance": "FVG present near entry. Bullish FVG: bar[i].low > bar[i-2].high. Bearish FVG: bar[i].high < bar[i-2].low. Or read directly from PxD Toolkit boxes (bgColor 1531263542 = imbalance box)."
-    },
-
-    "setup_grades": {
-      "absolute_best": "Small Brother (4H S&D zone) within OTE zone + all 4 confluence items confirmed",
-      "A_plus": "All 4 confluence items confirmed + imbalance near entry (no Small Brother present)",
-      "A": "With trend + BOS + retracing to 70.5% (no sweep, no Small Brother, no imbalance)",
-      "no_trade": "Counter trend without mandatory LQ label before MSS",
-      "counter_trend_adjustment": "Counter trend setup drops one grade automatically. Absolute Best → A+. A+ → A. A → no trade."
-    },
-
-    "sd_confluence_check": {
-      "description": "S&D zones used as confluence only — not a separate entry framework",
-      "4H_zones": "Does a fresh 4H S&D zone align with or conflict with the Killshot entry level?",
-      "daily_zones": "Does a Daily S&D zone align with or conflict with the Killshot entry level?",
-      "aligns": "Zone at or near entry in direction of bias → adds confluence ✅",
-      "in_path": "Zone between entry and TP → potential obstacle ⚠️ — flag it, assess if TP adjustment needed",
-      "conflicts": "Entering into opposing zone → reduces probability or invalidates ❌",
-      "freshness_detection": "Read bgColor from data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true). bgColor 2569935900 or 2586713116 = Fresh. bgColor 858659868 = Touched. bgColor null = inactive, ignore."
-    },
-
-    "big_brother_small_brother": {
-      "big_brother": "Daily S&D zone — provides HTF confluence context for Killshot entry",
-      "small_brother": "4H S&D zone — must fall within or near the Killshot entry level to count as confluence",
-      "rule": "Small Brother within OTE zone = highest grade confluence. Small Brother in path = obstacle warning."
-    }
+  "zone_detection": {
+    "source": "Supply & Demand Pro indicator via data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true)",
+    "base_length": "The indicator itself is filtered to a 6-candle max base — any zone it draws has already passed this. Do not re-validate base length independently.",
+    "leg_out_quality": "Not tagged by the indicator. Compute from the candle immediately breaking the base using candle_classification. Explosive = highest quality. Decisive = acceptable. If the breaking candle reads as indecisive, the zone likely wouldn't have been drawn by the indicator in the first place — flag as unusual if it ever appears."
   },
 
   "indicator_tags": {
-    "description": "S&D Pro indicator plots zones automatically on TradingView. Read tags directly.",
+    "description": "S&D Pro indicator plots zones automatically. Read tags directly — do not recompute what the indicator already tells you.",
     "tags": {
-      "timeframe": "Timeframe of the zone — Daily or 4H",
-      "formation": "Zone formation type — RBD, RBR, DBR, DBD",
+      "timeframe": "Timeframe of the zone — Weekly or Daily",
+      "formation": "Zone formation type — RBD, RBR, DBR, DBD (RBR/DBR = demand, RBD/DBD = supply)",
       "F": "Flip zone — new demand in area of original supply or new supply in area of original demand. NOT freshness.",
       "O": "Original zone — not caused by a reaction to another zone to its left",
       "LoL": "Level on Top of Level — two zones stacked with gap smaller than either zone"
     },
     "freshness_detection": {
       "method": "Read bgColor from data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true)",
-      "fresh": "bgColor 2569935900 or 2586713116 = Fresh (untouched) — both supply and demand use same base color #1c1c2e at 60% opacity",
-      "touched": "bgColor 858659868 = Touched — same base color at 20% opacity",
+      "fresh": "bgColor 2569935900 or 2586713116 = Fresh (untouched)",
+      "1st_touch": "bgColor 858659868 = Touched once — report as '1st Touch', matching the journal's simplified freshness scale",
       "inactive": "bgColor null = historical/inactive zone — ignore entirely"
     },
-    "fallback": "If indicator returns no data, fall back to structural price analysis and flag as approximate."
+    "fallback": "If the indicator returns no data for a pair, flag that pair as UNREADABLE. Do not fall back to manual structural analysis for zone detection."
   },
+
+  "htf_coverage": {
+    "description": "Confluence check — does a Daily zone sit inside or immediately overlap a Weekly zone of the same direction?",
+    "method": "Compare the Daily zone's price range against all active Weekly zones of the same type (both supply or both demand). Overlap or containment = HTF Coverage: Yes.",
+    "rule": "Not mandatory. Zones without HTF Coverage are still valid and reported — this is a confluence tier, not a filter."
+  },
+
+  "trend_confluence": {
+    "source": "Trend Direction Pro — data_get_pine_tables(study_filter='Trend Direction Pro')",
+    "reads": "Daily row and Weekly row: Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)",
+    "rule": "Tag only. A demand zone with a Bearish Daily trend is still reported, flagged as trend-conflicting rather than discarded.",
+    "hard_rule": "Never filter zones out based on trend. Trend is always reported alongside the zone, never used to exclude it."
+  },
+
+  "profit_check": {
+    "description": "Is there a clean path out of the zone before the next opposing zone, or is it boxed in?",
+    "method": "From the zone's edge, scan for the nearest opposing zone (Fresh or 1st Touch) in the direction price would move out of this zone.",
+    "flag": "If an opposing zone sits close to this zone's edge, flag as limited profit potential — still surfaced, not excluded."
+  },
+
+  "risk_tiers": {
+    "description": "Maps to the risk tiers already defined in the ote-journal Playbook. Used to suggest a tier per zone found, not to gate the scan.",
+    "1.5%": "Weekly zone, Fresh, Explosive or Decisive leg-out, HTF Coverage present",
+    "1%": "Daily zone only (no HTF Coverage) but Fresh with a Decisive+ leg-out, OR a Weekly zone that's 1st Touch",
+    "0.5%": "Everything else that still clears the basic checklist — 1st Touch Daily zone with no HTF Coverage, or trend-conflicting"
+  },
+
+  "checklist_reference": "This rulebook mirrors the C1-C8 zone-setup checklist and risk tiers documented in the ote-journal Playbook. Keep both in sync — the journal is where trades get logged against this same checklist; this file is what finds the zones in the first place.",
 
   "risk_rules": {
-    "risk_per_trade": "1% of account per trade",
     "minimum_rr": "1:2 for all trade types",
-    "max_open_positions": "No fixed limit — trades can be entered on different days and run concurrently. Practical ceiling is ~4 open at once.",
-    "daily_stop_rule": "Stop trading after 2 consecutive losing trades on the same day, OR when FTMO daily drawdown limit is reached — whichever comes first.",
-    "sl_placement": "100% Fibonacci level + 10% of 4H ATR. Longs: swing low wick − (ATR × 0.10). Shorts: swing high wick + (ATR × 0.10)."
+    "max_open_positions": "No fixed limit — practical ceiling is ~4 open at once.",
+    "daily_stop_rule": "Stop trading after 2 consecutive losing trades on the same day, OR when FTMO daily drawdown limit is reached — whichever comes first."
   },
 
-  "notes": "Killshot is the proprietary entry level at 70.5% fibonacci retracement — currently the only entry level while 78.6 is being backtested separately. HTF S&D zones are confluence tools only, not a separate entry framework. Confirmed and Unconfirmed Daily status are treated equally — no Daily liquidity grab check required. Liquidity grabs are only assessed on 4H: mandatory for counter trend setups, odds enhancer for with-trend setups. Counter trend setups enter at MSS (1st entry, higher risk, grade drops) or subsequent BOS (2nd entry, safer). MSS entry is invalidated once subsequent BOS confirms."
+  "notes": "OTE/Killshot is traded manually now, outside this system. This rulebook is HTF Supply & Demand only: scan Weekly + Daily zones, tag Trend Direction Pro as confluence (never a filter), read formation/flip/level-on-level/freshness directly from the indicator's own tags, compute leg-out quality from raw candles, and suggest a risk tier from zone quality. Base length is already filtered by the indicator (max 6 candles) — do not re-validate it."
 }
