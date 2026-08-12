@@ -141,74 +141,50 @@ Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines')
 - Night 4 code COMPILED (rev G committed) — location + hybrid verdict + MTF dashboard + chart-TF-first rows. GATE NOT RUN. Gate = fresh eyes: manual fib vs engine leg lines on 5 pairs Daily, verdict cells traced to SPEC matrix. First live verdicts sane: EURUSD D 21.6% CT WATCH ✔, 4H 58.5% NO TRADE ✔
 - TWIN ALERT (from home PC merge): pxd_toolkit_modified.pine (40.8KB) vs pxd_toolkit_v3.pine (53KB) — diff and resolve before any v2 work; one toolkit file survives
 - Night 4 GATE PASSED (4/5 match, 1/5 Bin-1: AUDNZD stale leg origin — fixed in rev I, re-check verified vs manual fib). LOCATION MODULE CERTIFIED. Remaining: section B mechanical checks, then Night 5 = alerts + MCP diff harness, then validation clock starts.
+- Aug 12: REVAMP — OTE/Killshot retired from this system (traded manually now). Rebuilt for HTF Supply & Demand zone scanning only: Weekly+Daily zones from Supply & Demand Pro, Trend Direction Pro and Campus Valuation Tool as confluence tags (never filters), leg-out quality computed from raw candles, risk tiers mapped to the ote-journal Playbook. Location Engine (SPEC.md, pivot/regime/verdict-matrix) and the OTE workflow scripts retired — full history preserved in git if ever needed. rules.json, CLAUDE.md, prefilter.txt, batch-prefilter.txt rewritten. Not yet live-tested against the real indicator (Campus Valuation Tool output format still unverified).
 
 ## System Rules
 
-Rule 1 — Trend Direction:
-"Trend direction and status are read EXCLUSIVELY from the Trend Direction Pro indicator table (bottom-left corner of chart). Use data_get_pine_tables(study_filter='Trend Direction Pro') to read it. Read the 1D row for Daily bias and the 1W row for Weekly context. Do NOT perform independent pivot analysis for trend direction. Do NOT use HH/HL/LH/LL labels for trend — use them only for swing level identification.
+These implement rules.json — see that file for the full rulebook. OTE/Killshot is now traded manually,
+outside this system; these rules are HTF Supply & Demand only.
 
-Verdict logic: VALID = clear Daily trend + correct price location. CAUTION = equilibrium or path obstacle. SKIP = table unreadable or no trend at all. Confirmed/Unconfirmed, Ranging/Trending, and Weekly alignment are DATA TAGS only — they never change the verdict and never prevent a trade. Log them in output for the trader's data collection."
+Rule 1 — Trend Direction (tag only, never a filter):
+"Trend direction and status are read from the Trend Direction Pro indicator table. Use data_get_pine_tables(study_filter='Trend Direction Pro'). Read the 1D row for Daily and the 1W row for Weekly.
+
+This is a confluence TAG, never a hard filter. A demand zone with a Bearish Daily trend is still reported — flagged as trend-conflicting, not discarded. Never exclude a zone based on trend, status, or strength."
 
 Rule 2 — Tool Hierarchy:
-HTF system (4H execution):
-  Daily → Trend Direction Pro (trend direction, status, strength)
-  Daily → PxD Toolkit (swing labels for location fib, BOS/MSS labels, LQ markers, FVG boxes)
-  4H → entry frame (BOS/MSS labels, displacement leg, OTE calculation, FVG boxes)
+Weekly → Supply & Demand Pro (zone context, HTF Coverage source) + Trend Direction Pro (Weekly bias tag)
+Daily → Supply & Demand Pro (primary zone scan target) + Trend Direction Pro (Daily bias tag)
+Both → Campus Valuation Tool (confluence tag, unverified — see rules.json)
 
-LTF system (15m execution):
-  4H → Trend Direction Pro (trend direction, status, strength — replaces Daily as bias)
-  4H → PxD Toolkit (swing labels, BOS/MSS, LQ markers, FVG boxes)
-  Daily → Trend Direction Pro (logged as background context only — does not override 4H bias)
+There is no separate LTF/4H execution system anymore. Weekly and Daily zones are the whole scan.
 
-Rule 3 — Path Obstacle Detection:
-"Obstacles in the path to TP are identified using Supply & Demand Pro zones only. Read data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true). Fresh (untouched) zones = dark blue = bgColor 2133728284 or 2116951068. Touched/mitigated zones = grey = bgColor 439234094 or null — ignore these entirely. For buys: flag fresh Supply zones between current price and swing high (TP). For sells: flag fresh Demand zones between current price and swing low (TP). LQ labels are never obstacles — they signal liquidity already swept."
+Rule 3 — Zone Detection & Tags:
+"Read data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true) on both Weekly and Daily. Read tags directly from the indicator — do not recompute what it already tells you: formation (RBD/RBR/DBR/DBD), F (flip zone), O (original zone), LoL (level on level).
 
-Rule 4 — Location Assessment:
-"Read HH/HL/LH/LL swing labels using data_get_pine_labels(study_filter='PxD Toolkit', verbose=true). Verbose mode returns all labels with bar_index. Sort by bar_index DESCENDING so the most recent labels are first.
+Freshness from bgColor: Fresh = 2569935900 or 2586713116. 1st Touch = 858659868. Inactive = null, ignore entirely.
 
-Swing low = most recent HL or LL label (highest bar_index among HL/LL labels)
-Swing high = most recent HH or LH label with bar_index HIGHER than the swing low's bar_index
-  → If none exists: swing high UNCONFIRMED
+Base length is already filtered by the indicator (max 6 candles) — do not re-validate it."
 
-Always state the swing low price and its label type (e.g. 'HL @ 0.77954, bar 911')
+Rule 4 — HTF Coverage:
+"For each Daily zone, check whether it sits inside or overlaps a Weekly zone of the same type (both supply or both demand). HTF Coverage = Yes/No. Not mandatory — zones without it are still valid and reported. This is a confluence tier, not a filter."
 
-If swing high confirmed: Location % = (price − swing low) / (swing high − swing low) × 100
-If swing high unconfirmed:
-  Within 1 ATR above swing low → Discount (provisional)
-  1–3 ATR above → Premium (provisional)
-  More than 3 ATR above → Extreme Premium (provisional)
+Rule 5 — Leg-Out Quality:
+"Not tagged by the indicator — compute it. Pull candles via data_get_ohlcv around the zone's formation and classify the candle that broke the base: ≤49% body = indecisive, 50-75% = decisive, >75% (and abnormally large vs. surrounding candles) = explosive. Leg-out quality = Explosive or Decisive. An indecisive breaking candle is unusual — the indicator likely wouldn't have drawn the zone in the first place."
 
-Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium"
+Rule 6 — Valuation Confluence (tag only, unverified):
+"Read data_get_pine_tables(study_filter='Campus Valuation Tool'), or data_get_study_values as fallback. Output format not yet confirmed live — report the raw read and flag if the attempt fails or looks malformed. The benchmark varies by asset (currency pairs vs. DXY, other assets vs. interest rates) — the indicator likely selects this internally per asset; don't assume one fixed comparison. Tag only, same as trend — never exclude a zone based on this, even once verified."
 
-Rule 4b — Obstacle Definition:
-"An obstacle is a fresh Supply & Demand Pro zone (bgColor 2133728284 or 2116951068) sitting between current price and the NEAREST realistic TP only. The nearest TP = closest swing high (buys) or swing low (sells) within the current move. Do not flag zones beyond that TP — they are irrelevant. Do not flag LQ labels as obstacles."
+## HTF Supply & Demand Scan Checklist
 
-Rule 5 — FVG Detection:
-"Read data_get_pine_boxes(study_filter='PxD Toolkit', verbose=true). Filter boxes with bgColor 623783470 — confirmed FVG box color. Check if any FVG is within 1 ATR of the KILLSHOT entry level."
-
-Rule 6 — Liquidity Grab Detection:
-"Read LQ labels from data_get_pine_labels(study_filter='PxD Toolkit'). LQ label with arrow = liquidity has already been swept from a previous high or low — this is a PAST EVENT and a positive confluence signal, not an obstacle. Never flag an LQ label as a barrier or obstacle in the path. For confluence: check if an LQ sweep appears immediately BEFORE the most recent BOS or MSS being analyzed. Do not flag old LQ labels from unrelated prior structure. LQ sweep is an odds enhancer — it is not mandatory to take a trade."
-
-## HTF Pre-Trade Checklist (4H Execution)
-
-1. Read Trend Direction Pro 1D row → Daily Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)
-2. Read Trend Direction Pro 1W row → Weekly Trend, Status, Strength (context only — never disqualifies)
-3. Fib the dominant Daily swing leg using PxD Toolkit labels → confirm price is in Discount (buys) or Premium (sells)
-4. Switch to 4H → find most recent BOS or MSS in direction of Daily bias
-5. Check for LQ sweep immediately before that BOS/MSS (odds enhancer)
-6. Identify the displacement leg → calculate OTE entry at 70.5% retracement
-7. Confirm FVG present at OTE entry level (PxD Toolkit box bgColor 1531263542)
-8. Grade: A (all confluences) / B (3 of 4) / C (2 of 4) / No setup
-9. Set limit at OTE entry, SL at 100% fib ± (ATR × 0.10), TP1 at 0% fib
-10. Set proximity alert 1 ATR away from entry
-
-## LTF Pre-Trade Checklist (15m Execution)
-
-1. Read Trend Direction Pro 4H row (or 1D row on 4H chart) → 4H Trend, Status, Strength → this is your bias
-2. Read Trend Direction Pro 1D and 1W rows → log as background context
-3. Fib the dominant 4H swing leg → confirm price location
-4. On 4H → find BOS or MSS in direction of 4H bias
-5. Check for LQ sweep before BOS/MSS
-6. Identify displacement leg → calculate OTE at 70.5%
-7. Confirm FVG at entry
-8. Grade and set parameters same as HTF checklist
+1. Weekly pass: read Supply & Demand Pro zones, tags, and freshness
+2. Daily pass: same, on Daily
+3. HTF Coverage: does a Daily zone sit inside a Weekly zone of the same type?
+4. Leg-out quality: classify the breaking candle from raw OHLCV (Rule 5)
+5. Trend tag: Trend Direction Pro Daily + Weekly rows (Rule 1 — never disqualifies)
+6. Valuation tag: Campus Valuation Tool, unverified (Rule 6 — never disqualifies)
+7. Profit check: nearest opposing Fresh/1st Touch zone in the direction out of this zone — Clear or Boxed in
+8. Risk tier: map to 1.5% / 1% / 0.5% per rules.json based on timeframe, freshness, leg-out quality, and HTF Coverage
+9. Report the zone regardless of trend/valuation alignment — those are tags for the trader's judgment, not gates
+10. Alerts are manual for now — automated proximity alerts are a later phase, not built yet
