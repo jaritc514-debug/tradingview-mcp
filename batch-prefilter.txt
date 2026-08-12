@@ -1,7 +1,12 @@
 BATCH PREFILTER — HTF Supply & Demand
 =====================================
-Scan your entire TradingView watchlist for fresh HTF Supply & Demand zones.
-Do NOT run full analysis. Do NOT calculate entry levels. See rules.json for the full rulebook.
+Scan your entire TradingView watchlist for HTF Supply & Demand zones.
+Do NOT run full analysis. Do NOT calculate entry levels beyond the quick 2R check below.
+See rules.json for the full rulebook.
+
+Run about twice a week (before market open, and midweek) — scope is intentionally bounded per
+rules.json zone_detection.scan_scope: Weekly nearest 2 Supply + 2 Demand (any freshness — confluence only).
+Daily nearest 3 FRESH Supply + 3 FRESH Demand — Touched Daily zones aren't entry candidates, skip them.
 
 ---
 
@@ -18,25 +23,32 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
 
 2. WEEKLY PASS
    - chart_set_timeframe → Weekly
-   - data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record active Weekly zones
-   - Read tags directly: formation (RBD/RBR/DBR/DBD), F, O, LoL
-   - Freshness from bgColor: Fresh / 1st Touch (ignore inactive zones entirely)
+   - data_get_study_values() → "Supply N Proximal/Distal" / "Demand N Proximal/Distal" for Supply & Demand
+     Pro, ordered nearest-to-farthest. Keep Supply 1-2 and Demand 1-2 only, regardless of freshness
+     (fewer if fewer exist).
+   - data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) +
+     data_get_pine_labels(study_filter="Supply & Demand Pro") → match by price to the kept zones for
+     formation (RBD/RBR/DBR/DBD), F, O, LoL, and freshness (#1c1c2e=Fresh, #787b86=Touched — see
+     rules.json indicator_tags.freshness_detection).
    - If unreadable: flag pair as UNREADABLE, skip to next symbol
 
 3. DAILY PASS
    - chart_set_timeframe → Daily
-   - data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record active Daily zones
-   - Same tag/freshness reading as Weekly
+   - data_get_study_values() again — may return more than 3 per side. Match ALL against pine_boxes/labels
+     for freshness, then keep only the nearest 3 FRESH Supply and nearest 3 FRESH Demand (skip Touched
+     ones, keep checking further down the list; fewer than 3 if fewer than 3 Fresh exist — no fallback to
+     Touched, no padding).
 
 4. HTF COVERAGE
-   For each Daily zone, check if it sits inside or overlaps a Weekly zone of the same type.
-   HTF Coverage = Yes / No. Report both either way — not a filter.
+   For each in-scope Daily zone, check if it sits inside or overlaps an in-scope Weekly zone of the same
+   type. HTF Coverage = Yes / No. Report both either way — not a filter.
 
 5. LEG-OUT QUALITY
    Base length already filtered by the indicator (max 6 candles) — do not re-validate.
-   For each zone, pull candles via data_get_ohlcv around its formation and classify the breaking candle:
-     ≤49% body = indecisive | 50-75% = decisive | >75% (abnormally large) = explosive
-   Leg-out quality = Explosive / Decisive.
+   For each in-scope zone, pull candles via data_get_ohlcv around its formation and classify the breaking
+   candle: ≤49% body = indecisive | 50-75% = decisive | >75% (abnormally large) = explosive
+   Leg-out quality = Explosive / Decisive. If the fetched OHLCV window doesn't reach the zone's formation,
+   report "not computed" rather than guessing.
 
 6. TREND CONFLUENCE (tag only)
    - data_get_pine_tables(study_filter="Trend Direction Pro") → Daily and Weekly rows
@@ -46,25 +58,32 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    - data_get_pine_tables(study_filter="Campus Valuation Tool") or data_get_study_values as fallback
    - Report raw read or "unverified" if it fails. Never excludes a zone.
 
-8. PROFIT CHECK
-   Nearest opposing zone (Fresh or 1st Touch) in the direction out of this zone.
+8. PROFIT CHECK (2R-based) — DAILY ZONES ONLY
+   Weekly is never entered directly — it's an odds-enhancer for HTF Coverage only. Skip this step for
+   Weekly zones; their Path/Risk Tier columns in the output table are "—".
+   Entry = proximal edge. SL = distal edge + 33% of zone height buffer (away from the zone, direction per
+   rules.json risk_rules.stop_loss). TP = entry ± 2R (fixed). Check if an opposing in-scope Daily zone sits
+   between entry and the 2R target.
    Path = Clear / Boxed in.
 
-9. RISK TIER
-   Apply the mapping from rules.json based on timeframe, freshness, leg-out quality, HTF Coverage.
+9. RISK TIER — DAILY ZONES ONLY
+   Apply the mapping from rules.json based on freshness, leg-out quality, HTF Coverage. No tier for
+   Weekly zones — see rules.json risk_tiers.scope_note.
 
 ---
 
 OUTPUT — print after every symbol on the watchlist has been scanned:
 
-SORT ORDER:
+SORT ORDER (Daily zones — these are the ones with a tier to sort by):
 1. HTF Coverage: Yes, tier 1.5% — highest conviction first
 2. HTF Coverage: Yes, tier 1% or 0.5%
 3. HTF Coverage: No, any tier — still real zones, just no Weekly confluence
 4. UNREADABLE — always last, separated by divider
+Weekly zones (no tier) — group directly under their pair's Daily rows, order doesn't otherwise matter.
 
-TABLE FORMAT (one line per zone — a pair may appear more than once if it has both a Weekly and Daily zone):
-[PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/1st Touch] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Path] | [Risk Tier]
+TABLE FORMAT (one line per zone — a pair may appear more than once, up to 2 Weekly + 3 Daily zones per side):
+[PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/Touched] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Path] | [Risk Tier]
+Weekly rows: Path and Risk Tier are always "—" (not traded directly, confluence-only).
 
 ─────────────────────────────────────────────────────────────────────
 ⚠ UNREADABLE — verify manually before relying on this pair
@@ -81,7 +100,7 @@ Tier 1.5%: X | Tier 1%: X | Tier 0.5%: X | UNREADABLE: X
 
 ── ZONES PRICE IS APPROACHING ────────────────────────────────
 For any zone within roughly 1-2 ATR of current price: list it here.
-Format: [PAIR] | [Weekly/Daily] [Supply/Demand] | [Risk Tier] | Current price [X] vs zone [range]
+Format: [PAIR] | [Weekly/Daily] [Supply/Demand] | [Risk Tier or "—" for Weekly] | Current price [X] vs zone [range]
 This is your manual-alert shortlist for now — automated alerts are a later phase, not built yet.
 If none: "No zones within range this session."
 

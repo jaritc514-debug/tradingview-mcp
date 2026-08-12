@@ -9,8 +9,8 @@
   "methodology": "HTF Supply & Demand zone trading only. OTE/Killshot is now traded manually, outside this system. Scan Weekly and Daily zones from the Supply & Demand Pro indicator. A Daily zone sitting inside a Weekly zone is confluence (HTF Coverage), not a requirement. Trend Direction Pro bias is a confluence tag, never a hard filter.",
 
   "timeframe_hierarchy": {
-    "Weekly": "Highest-timeframe zone context. A Weekly zone containing a Daily zone = HTF Coverage confluence.",
-    "Daily": "Primary zone timeframe scanned. Entry planning happens here."
+    "Weekly": "Highest-timeframe zone context. A Weekly zone containing a Daily zone = HTF Coverage confluence. Never entered directly — it's an odds-enhancer only, confirmed by the user 2026-08-12. No Entry/SL/TP or risk tier is computed for Weekly zones.",
+    "Daily": "Primary zone timeframe scanned. Entry planning happens here — this is the only timeframe actually traded."
   },
 
   "candle_classification": {
@@ -30,9 +30,10 @@
   },
 
   "zone_detection": {
-    "source": "Supply & Demand Pro indicator via data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true)",
+    "source": "Supply & Demand Pro indicator. Two complementary reads: (1) data_get_study_values() returns the indicator's own authoritative list of CURRENTLY ACTIVE zones as 'Supply N Proximal/Distal' and 'Demand N Proximal/Distal' pairs, ORDERED NEAREST-TO-FARTHEST from current price (Supply 1 / Demand 1 = closest) — verified 2026-08-12 on OANDA:CADCHF by cross-matching its price levels almost exactly against the pine_boxes color read below. (2) data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true) + data_get_pine_labels(study_filter='Supply & Demand Pro') give the formation/F/O/LoL tags and freshness state for those same zones by matching price ranges. Use study_values first to know WHICH zones are live and their order, then match boxes/labels by price to get their tags.",
+    "scan_scope": "Added 2026-08-12 — this scan runs about twice a week (before market open, and midweek), not continuously, so bounding scope trades a small chance of missing a farther zone for a much cleaner report and (on Daily) avoiding the leg_out_quality history-window problem below. Weekly: nearest 2 Supply + nearest 2 Demand (Supply 1-2 / Demand 1-2 from data_get_study_values), REGARDLESS of freshness — Weekly is confluence-only (see timeframe_hierarchy), so a Touched Weekly zone is just as relevant to the HTF Coverage check as a Fresh one. Daily: nearest 3 FRESH Supply + nearest 3 FRESH Demand specifically — confirmed 2026-08-12 the user only enters Fresh Daily zones, Touched ones are not a candidate. This means checking freshness across the FULL active list from data_get_study_values (which may return more than 3 per side, e.g. Supply 1-5), not just the first 3 by index — skip Touched entries and keep counting until 3 Fresh are found (or fewer, if fewer than 3 Fresh exist — don't pad, and don't fall back to Touched ones). Only pull pine_boxes/pine_labels detail (tags, colors) for the zones actually kept in scope, not the full active list.",
     "base_length": "The indicator itself is filtered to a 6-candle max base — any zone it draws has already passed this. Do not re-validate base length independently.",
-    "leg_out_quality": "Not tagged by the indicator. Compute from the candle immediately breaking the base using candle_classification. Explosive = highest quality. Decisive = acceptable. If the breaking candle reads as indecisive, the zone likely wouldn't have been drawn by the indicator in the first place — flag as unusual if it ever appears."
+    "leg_out_quality": "Not tagged by the indicator. Compute from the candle immediately breaking the base using candle_classification. Explosive = highest quality. Decisive = acceptable. If the breaking candle reads as indecisive, the zone likely wouldn't have been drawn by the indicator in the first place — flag as unusual if it ever appears. Caveat (found 2026-08-12): older zones can sit outside the OHLCV history returned by data_get_ohlcv (capped at 300-500 bars depending on symbol/resolution) — if the formation candle isn't in range, report leg-out as 'not computed — formation predates fetched history' rather than guessing. The scan_scope cap above (nearest 2-3 per side) should keep most zones within range in practice."
   },
 
   "indicator_tags": {
@@ -45,17 +46,18 @@
       "LoL": "Level on Top of Level — two zones stacked with gap smaller than either zone"
     },
     "freshness_detection": {
-      "method": "Read bgColor from data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true)",
-      "fresh": "bgColor 2569935900 or 2586713116 = Fresh (untouched)",
-      "1st_touch": "bgColor 858659868 = Touched once — report as '1st Touch', matching the journal's simplified freshness scale",
-      "inactive": "bgColor null = historical/inactive zone — ignore entirely"
+      "method": "Read bgColor/borderColor from data_get_pine_boxes(study_filter='Supply & Demand Pro', verbose=true). CONFIRMED by the user directly on 2026-08-12 (previous versions of this file were wrong/stale, then an unconfirmed live inference — this is now ground truth). Color encodes FRESHNESS, not supply/demand type — a supply zone and a demand zone can each appear in either color depending on their own touch state.",
+      "fresh": "Hex #1c1c2e (RGB 28,28,46 — dark indigo/navy) = Fresh/untouched, for both supply and demand zones. As a raw int from data_get_pine_boxes this decodes with the color's alpha byte first: format is 0xAABBGGRR (blue/green/red order, NOT the usual ARGB) — e.g. bgColor 2351832092 = 0x8c2e1c1c = alpha 140, #1c1c2e.",
+      "touched": "Hex #787b86 (RGB 120,123,134 — neutral grey) = Touched (no longer fresh), for both supply and demand zones. E.g. bgColor 1283881848 = 0x4c867b78 = alpha 76, #787b86. Report as '1st Touch' per the journal's simplified freshness scale — this indicator doesn't appear to distinguish 1st touch from further touches, they all render #787b86.",
+      "inactive": "bgColor null = historical/inactive zone — ignore entirely.",
+      "byte_order_warning": "When decoding a raw bgColor/borderColor int, do NOT assume standard 0xAARRGGBB — this indicator's values are 0xAABBGGRR (R and B swapped). Extract as: A=(v>>>24)&0xff, B=(v>>>16)&0xff, G=(v>>>8)&0xff, R=v&0xff."
     },
     "fallback": "If the indicator returns no data for a pair, flag that pair as UNREADABLE. Do not fall back to manual structural analysis for zone detection."
   },
 
   "htf_coverage": {
     "description": "Confluence check — does a Daily zone sit inside or immediately overlap a Weekly zone of the same direction?",
-    "method": "Compare the Daily zone's price range against all active Weekly zones of the same type (both supply or both demand). Overlap or containment = HTF Coverage: Yes.",
+    "method": "Compare each in-scope Daily zone's price range (nearest 3 per side, per zone_detection.scan_scope) against the in-scope Weekly zones of the same type (nearest 2 per side). Overlap or containment = HTF Coverage: Yes.",
     "rule": "Not mandatory. Zones without HTF Coverage are still valid and reported — this is a confluence tier, not a filter."
   },
 
@@ -74,22 +76,25 @@
   },
 
   "profit_check": {
-    "description": "Is there a clean path out of the zone before the next opposing zone, or is it boxed in?",
-    "method": "From the zone's edge, scan for the nearest opposing zone (Fresh or 1st Touch) in the direction price would move out of this zone.",
-    "flag": "If an opposing zone sits close to this zone's edge, flag as limited profit potential — still surfaced, not excluded."
+    "description": "Will an opposing zone block price before it reaches the fixed 2R target, or is the path clear? DAILY ZONES ONLY — see risk_tiers.scope_note.",
+    "method": "Compute entry/SL/TP per risk_rules (entry at proximal edge, SL = distal ± 33% buffer, TP = entry ± 2R). Check whether any opposing-type zone (Fresh or 1st Touch) sits between entry and the 2R target. This replaces an earlier 'scan for the nearest opposing zone' framing — TP here is always exactly 2R, not zone-derived, so the check should be against that fixed distance, not an arbitrary count of nearby zones.",
+    "flag": "If an opposing zone sits inside the entry-to-2R-target range, flag as Boxed in / limited profit potential — still surfaced, not excluded. If no opposing zone sits in that range, flag as Clear."
   },
 
   "risk_tiers": {
     "description": "Maps to the risk tiers already defined in the ote-journal Playbook. Used to suggest a tier per zone found, not to gate the scan.",
-    "1.5%": "Weekly zone, Fresh, Explosive or Decisive leg-out, HTF Coverage present",
-    "1%": "Daily zone only (no HTF Coverage) but Fresh with a Decisive+ leg-out, OR a Weekly zone that's 1st Touch",
-    "0.5%": "Everything else that still clears the basic checklist — 1st Touch Daily zone with no HTF Coverage, or trend-conflicting"
+    "scope_note": "CORRECTED 2026-08-12 — Weekly is never entered directly, it's purely an odds-enhancer for HTF Coverage on Daily zones. Entry/SL/TP and a risk tier are computed for DAILY zones only. Weekly zones still get reported in full (formation, freshness, leg-out, trend/valuation tags) since they're the source of the HTF Coverage confluence check, but no Entry/SL/TP or Suggested Risk Tier line — it's not a tradeable setup on its own.",
+    "freshness_note": "Also corrected 2026-08-12 — Daily entries are Fresh-only (see zone_detection.scan_scope). Touched Daily zones are excluded from the in-scope entry list entirely, so the tiers below are all implicitly 'Fresh Daily zone, plus...' — there's no separate Touched-Daily tier anymore.",
+    "1.5%": "Fresh Daily zone, Explosive or Decisive leg-out, HTF Coverage present",
+    "1%": "Fresh Daily zone, Decisive+ leg-out, no HTF Coverage",
+    "0.5%": "Fresh Daily zone that still clears the basic checklist but leg-out is not computed/indecisive, or trend-conflicting"
   },
 
   "checklist_reference": "This rulebook mirrors the C1-C8 zone-setup checklist and risk tiers documented in the ote-journal Playbook. Keep both in sync — the journal is where trades get logged against this same checklist; this file is what finds the zones in the first place.",
 
   "risk_rules": {
-    "minimum_rr": "1:2 for all trade types",
+    "minimum_rr": "Always exactly 2R — not a minimum floor, the fixed target. TP = entry ± 2R.",
+    "stop_loss": "SL sits beyond the zone's distal edge (the boundary farthest from current price — deeper into the zone), offset by a buffer of 33% of the zone's own height (distal-to-proximal distance). Demand (long): SL = distal − 0.33 × (proximal − distal). Supply (short): SL = distal + 0.33 × (distal − proximal). R = |entry − SL|.",
     "max_open_positions": "No fixed limit — practical ceiling is ~4 open at once.",
     "daily_stop_rule": "Stop trading after 2 consecutive losing trades on the same day, OR when FTMO daily drawdown limit is reached — whichever comes first."
   },

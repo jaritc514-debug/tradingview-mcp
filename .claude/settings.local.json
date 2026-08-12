@@ -24,7 +24,8 @@
       "mcp__tradingview__ui_click",
       "mcp__tradingview__pine_open",
       "mcp__tradingview__pine_get_source",
-      "mcp__tradingview__pine_list_scripts"
+      "mcp__tradingview__pine_list_scripts",
+      "mcp__tradingview__tv_launch"
     ]
   }
 }

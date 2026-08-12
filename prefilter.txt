@@ -1,28 +1,45 @@
 PREFILTER SCAN — HTF Supply & Demand
 =====================================
-You are scanning the pair currently open on TradingView for fresh HTF Supply & Demand zones.
-Quick scan only — no manual fib math, no entry calculation. See rules.json for the full rulebook.
+You are scanning the pair currently open on TradingView for HTF Supply & Demand zones. Weekly zones can be
+Fresh or Touched (confluence only). Daily zones are Fresh-only — the user does not enter on Touched Daily
+zones, so those aren't pulled into scope at all. Quick scan only — no manual fib math. See rules.json.
+
+Run about twice a week (before market open, and midweek) — scope is intentionally bounded per
+rules.json zone_detection.scan_scope: Weekly nearest 2 Supply + 2 Demand (any freshness — confluence only).
+Daily nearest 3 FRESH Supply + 3 FRESH Demand — Touched Daily zones are not entry candidates, skip them.
 
 ---
 
-STEP 1 — PULL ZONES (Weekly + Daily)
+STEP 1 — PULL THE IN-SCOPE ZONES (Weekly + Daily)
 - chart_set_timeframe → Weekly
-- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record all active Weekly zones
+- data_get_study_values() → read "Supply N Proximal/Distal" and "Demand N Proximal/Distal" for the
+  Supply & Demand Pro study. This list is ordered nearest-to-farthest from current price. Keep Supply 1-2
+  and Demand 1-2 only, regardless of freshness (fewer if fewer exist — don't pad).
+- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) and
+  data_get_pine_labels(study_filter="Supply & Demand Pro") → match by price range to the zones just kept,
+  to read formation (RBD/RBR/DBR/DBD), F (flip), O (original), LoL (level on level), and freshness color
+  (see rules.json indicator_tags.freshness_detection: #1c1c2e = Fresh, #787b86 = Touched, null = inactive —
+  ignore null zones, they shouldn't appear in the study_values list anyway).
 - chart_set_timeframe → Daily
-- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record all active Daily zones
-- For each zone, read directly from its tags (do not recompute): formation (RBD/RBR/DBR/DBD), F (flip), O (original), LoL (level on level)
-- Freshness from bgColor: Fresh / 1st Touch / inactive (ignore inactive entirely) — see rules.json indicator_tags for exact bgColor values
-- If the indicator returns no data: flag this pair as UNREADABLE and stop here
+- data_get_study_values() again — this can return more than 3 per side (e.g. Supply 1-5). Match ALL of
+  them against pine_boxes/pine_labels for freshness, then keep only the nearest 3 FRESH Supply and nearest
+  3 FRESH Demand — skip Touched ones and keep checking further down the list until 3 Fresh are found (or
+  fewer, if fewer than 3 Fresh exist across the whole active list — don't fall back to Touched, don't pad).
+- If the indicator returns no data at all: flag this pair as UNREADABLE and stop here.
 
 STEP 2 — HTF COVERAGE
-For each Daily zone, check whether it sits inside or overlaps a Weekly zone of the same type (both supply or both demand).
-HTF Coverage = Yes / No. Not mandatory — report both either way.
+For each in-scope Daily zone, check whether it sits inside or overlaps an in-scope Weekly zone of the
+same type (both supply or both demand). HTF Coverage = Yes / No. Not mandatory — report both either way.
 
 STEP 3 — LEG-OUT QUALITY
 The indicator's own base-length filter is already capped at 6 candles — do not re-validate base length.
-For each zone, pull the candles around its formation via data_get_ohlcv and classify the candle that broke the base:
+For each in-scope zone, pull candles via data_get_ohlcv around its formation and classify the candle that
+broke the base:
   ≤49% body = indecisive | 50-75% = decisive | >75% (and abnormally large) = explosive
-Leg-out quality = Explosive / Decisive. If the breaking candle reads as indecisive, flag as unusual — the indicator likely wouldn't have drawn this zone.
+Leg-out quality = Explosive / Decisive. If the OHLCV window fetched doesn't reach back to the zone's
+formation (older zone, small pair, whatever), report "not computed — formation predates fetched history"
+rather than guessing — don't force a classification. If the breaking candle reads as indecisive, flag as
+unusual — the indicator likely wouldn't have drawn this zone.
 
 STEP 4 — TREND CONFLUENCE (tag only)
 - data_get_pine_tables(study_filter="Trend Direction Pro") → read Daily and Weekly rows
@@ -30,29 +47,43 @@ STEP 4 — TREND CONFLUENCE (tag only)
 - Tag each zone as trend-aligned or trend-conflicting. NEVER exclude a zone based on this.
 
 STEP 5 — VALUATION CONFLUENCE (tag only, unverified)
-- data_get_pine_tables(study_filter="Campus Valuation Tool") — if this fails, try data_get_study_values(study_filter="Campus Valuation Tool")
-- This indicator's output format hasn't been confirmed live yet. Report whatever it returns as-is, and note in your output if the read attempt failed or looked malformed — that's useful signal for fixing rules.json.
+- data_get_pine_tables(study_filter="Campus Valuation Tool") — if this fails, try
+  data_get_study_values(study_filter="Campus Valuation Tool")
+- This indicator's output format hasn't been confirmed live yet (as of 2026-08-12 both reads came back
+  empty on a live test). Report whatever comes back as-is, and note if the read failed or looked malformed.
 - Tag only. NEVER exclude a zone based on this, even once verified.
 
-STEP 6 — PROFIT CHECK
-From each zone's edge, look for the nearest opposing zone (Fresh or 1st Touch) in the direction price would move out of the zone.
-Path = Clear / Boxed in — [nearest opposing zone type] at [price range]
+STEP 6 — PROFIT CHECK (2R-based, per rules.json profit_check) — DAILY ZONES ONLY
+Weekly is never entered directly — it's an odds-enhancer for HTF Coverage only. Skip this step entirely
+for Weekly zones, no Entry/SL/TP line for them.
+- Entry = zone's proximal edge (the edge nearest current price)
+- SL = distal edge, offset by 33% of the zone's own height, away from the zone:
+    Demand (long):  SL = distal − 0.33 × (proximal − distal)
+    Supply (short): SL = distal + 0.33 × (distal − proximal)
+- R = |entry − SL|. TP = entry ± 2R (2R is fixed, not zone-derived).
+- Check whether any opposing-type in-scope Daily zone sits between entry and the 2R target.
+- Path = Clear (nothing blocks the 2R target) / Boxed in (an opposing zone sits inside that range — name it
+  and its price).
 
-STEP 7 — RISK TIER
-Apply the tier mapping from rules.json based on timeframe, freshness, leg-out quality, and HTF Coverage.
+STEP 7 — RISK TIER — DAILY ZONES ONLY
+Apply the tier mapping from rules.json risk_tiers based on freshness, leg-out quality, and HTF Coverage.
+No tier for Weekly zones — see risk_tiers.scope_note.
 
 ---
 
-OUTPUT — one block per zone found (Weekly and Daily reported separately):
+OUTPUT — one block per in-scope zone found (Weekly and Daily reported separately, nearest-to-price first):
 
 PAIR: [pair]
 ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
-Freshness: [Fresh/1st Touch]  |  Leg-Out: [Explosive/Decisive]  |  HTF Coverage: [Yes/No]
+Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed]  |  HTF Coverage: [Yes/No]
 Tags: [F if flip]  [O if original]  [LoL if level-on-level]
 Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same] — [Aligned/Conflicting]
 Valuation: [raw read, or "unverified — see rules.json"]
+
+Daily zones only — omit these two lines entirely for Weekly zones:
+Entry/SL/TP: [entry] / [SL] / [TP at 2R]
 Path: [Clear / Boxed in — detail]
 
-SUGGESTED RISK TIER: [1.5% / 1% / 0.5%]
+SUGGESTED RISK TIER (Daily zones only — omit for Weekly): [1.5% / 1% / 0.5%]
 
 If no active zones on either timeframe: "No active zones on [pair] — Weekly or Daily."

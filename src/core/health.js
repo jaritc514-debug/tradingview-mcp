@@ -173,7 +173,6 @@ export async function launch({ port, kill_existing } = {}) {
       `${process.env.LOCALAPPDATA}\\TradingView\\TradingView.exe`,
       `${process.env.PROGRAMFILES}\\TradingView\\TradingView.exe`,
       `${process.env['PROGRAMFILES(X86)']}\\TradingView\\TradingView.exe`,
-      `${process.env.PROGRAMFILES}\\WindowsApps\\TradingView.Desktop_3.2.0.7916_x64__n534cwy3pjxzj\\TradingView.exe`,
     ],
     linux: [
       '/opt/TradingView/tradingview',
@@ -195,6 +194,20 @@ export async function launch({ port, kill_existing } = {}) {
       const cmd = platform === 'win32' ? 'where TradingView.exe' : 'which tradingview';
       tvPath = execSync(cmd, { timeout: 3000 }).toString().trim().split('\n')[0];
       if (tvPath && !existsSync(tvPath)) tvPath = null;
+    } catch { /* ignore */ }
+  }
+
+  if (!tvPath && platform === 'win32') {
+    // TradingView Desktop on Windows may be installed as an MSIX/AppX package
+    // under a version-specific WindowsApps folder (e.g. TradingView.Desktop_3.3.0.7992_...).
+    // Query the package manager instead of hardcoding a version number.
+    try {
+      const psCmd = "(Get-AppxPackage -Name '*TradingView*' | Select-Object -First 1 -ExpandProperty InstallLocation)";
+      const installLocation = execSync(`powershell -NoProfile -Command "${psCmd}"`, { timeout: 5000 }).toString().trim();
+      if (installLocation) {
+        const candidate = `${installLocation}\\TradingView.exe`;
+        if (existsSync(candidate)) tvPath = candidate;
+      }
     } catch { /* ignore */ }
   }
 
