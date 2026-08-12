@@ -1,104 +1,91 @@
-BATCH PREFILTER — PxD Trading System
+BATCH PREFILTER — HTF Supply & Demand
 =====================================
-Scan all 20 pairs in the PxD watchlist using the prefilter criteria.
-Do NOT run full analysis. Do NOT calculate entry levels or fibs.
-Scan all pairs silently first, then print the full ranked table at once.
-
-PAIRS TO SCAN (in this order):
-AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY,
-AUDJPY, AUDNZD, CADCHF, CADJPY, CHFJPY, EURCAD, EURCHF,
-EURGBP, EURJPY, GBPCAD, GBPCHF, GBPJPY, NZDJPY
+Scan your entire TradingView watchlist for fresh HTF Supply & Demand zones.
+Do NOT run full analysis. Do NOT calculate entry levels. See rules.json for the full rulebook.
 
 ---
 
-FOR EACH PAIR — run silently, no mid-scan output:
+STEP 0 — PULL THE WATCHLIST
+- Before running: make sure the "SCAN" watchlist tab is the active one in TradingView's right-hand panel.
+  watchlist_get reads whichever watchlist tab is currently visible — it does not know about or combine
+  other watchlists. If a different tab is active, this will silently scan the wrong (or empty) list.
+- watchlist_get → the actual live symbol list. Scan every symbol returned, in the order given.
+- Do not assume or hardcode a symbol list — always use what watchlist_get actually returns.
 
-1. chart_set_symbol → switch to pair
-2. chart_set_timeframe → Daily
-3. data_get_pine_tables(study_filter="Trend Direction Pro") → read 1D and 1W rows
-   Record: Daily Trend / Status / Strength | Weekly Trend / Status / Strength
-   If table unreadable: capture_screenshot and read visually. If still unclear: flag as UNREADABLE.
+FOR EACH SYMBOL — run silently, no mid-scan output:
 
-4. Call in parallel:
-   - data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → all swing labels with bar_index
-   - quote_get → current price
+1. chart_set_symbol → switch to symbol
 
-   Sort all labels by bar_index DESCENDING (highest = most recent)
-   Swing low = most recent HL or LL (highest bar_index among HL/LL labels)
-   Swing high = most recent HH or LH with bar_index HIGHER than swing low's bar_index
-     → If none: swing high UNCONFIRMED
+2. WEEKLY PASS
+   - chart_set_timeframe → Weekly
+   - data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record active Weekly zones
+   - Read tags directly: formation (RBD/RBR/DBR/DBD), F, O, LoL
+   - Freshness from bgColor: Fresh / 1st Touch (ignore inactive zones entirely)
+   - If unreadable: flag pair as UNREADABLE, skip to next symbol
 
-   If swing high confirmed:
-     Location % = (price − swing low) / (swing high − swing low) × 100
-   If swing high unconfirmed:
-     Within 1 ATR above swing low → Discount (provisional)
-     1–3 ATR above → Premium (provisional)
-     More than 3 ATR above → Extreme Premium (provisional)
+3. DAILY PASS
+   - chart_set_timeframe → Daily
+   - data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record active Daily zones
+   - Same tag/freshness reading as Weekly
 
-   Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium
+4. HTF COVERAGE
+   For each Daily zone, check if it sits inside or overlaps a Weekly zone of the same type.
+   HTF Coverage = Yes / No. Report both either way — not a filter.
 
-5. data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → check for fresh zones
-   Fresh zones = bgColor 2133728284 or 2116951068 (dark blue)
-   Touched zones = bgColor 439234094 or null — ignore completely
-   Do NOT flag LQ labels as obstacles
+5. LEG-OUT QUALITY
+   Base length already filtered by the indicator (max 6 candles) — do not re-validate.
+   For each zone, pull candles via data_get_ohlcv around its formation and classify the breaking candle:
+     ≤49% body = indecisive | 50-75% = decisive | >75% (abnormally large) = explosive
+   Leg-out quality = Explosive / Decisive.
 
-   For BUYS: flag OBSTACLE only if:
-     1. Current price is INSIDE a fresh Supply zone
-     2. A fresh Supply zone is within 1 ATR above current price
-   For SELLS: flag OBSTACLE only if:
-     1. Current price is INSIDE a fresh Demand zone
-     2. A fresh Demand zone is within 1 ATR below current price
-   Everything else = ignore, do not mention
-   Path clear = Yes / Obstacle — [inside / immediately above|below] fresh [Supply/Demand] zone at [price range]
+6. TREND CONFLUENCE (tag only)
+   - data_get_pine_tables(study_filter="Trend Direction Pro") → Daily and Weekly rows
+   - Tag each zone trend-aligned or trend-conflicting. Never excludes a zone.
 
-6. Apply VERDICT:
-   ✅ VALID    — Daily has a clear Bullish or Bearish trend AND price is in the correct location for that bias
-   ⚠️ CAUTION — Price in Equilibrium (~50%), OR obstacle directly in path, OR trend direction weak/unclear
-   ❌ SKIP     — Trend Direction Pro table unreadable OR Daily shows no discernible trend direction at all
+7. VALUATION CONFLUENCE (tag only, unverified)
+   - data_get_pine_tables(study_filter="Campus Valuation Tool") or data_get_study_values as fallback
+   - Report raw read or "unverified" if it fails. Never excludes a zone.
 
-   IMPORTANT: Confirmed/Unconfirmed and Ranging/Trending are TAGS only — they never change the verdict.
-   All setups are taken regardless. These tags are logged for data collection purposes only.
+8. PROFIT CHECK
+   Nearest opposing zone (Fresh or 1st Touch) in the direction out of this zone.
+   Path = Clear / Boxed in.
+
+9. RISK TIER
+   Apply the mapping from rules.json based on timeframe, freshness, leg-out quality, HTF Coverage.
 
 ---
 
-OUTPUT — print after ALL 20 pairs are scanned:
+OUTPUT — print after every symbol on the watchlist has been scanned:
 
 SORT ORDER:
-1. VALID ✅ — Confirmed Trending (buy candidates: lowest location % first | sell candidates: highest % first)
-2. VALID ✅ — Confirmed Ranging or Unconfirmed Trending
-3. CAUTION ⚠️
-4. SKIP ❌ — sorted by reason
-5. UNREADABLE — always last, separated by divider
+1. HTF Coverage: Yes, tier 1.5% — highest conviction first
+2. HTF Coverage: Yes, tier 1% or 0.5%
+3. HTF Coverage: No, any tier — still real zones, just no Weekly confluence
+4. UNREADABLE — always last, separated by divider
 
-TABLE FORMAT (one line per pair):
-[PAIR] | [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging] | [Weekly agrees/conflicts] | [Location %] | [VERDICT]
+TABLE FORMAT (one line per zone — a pair may appear more than once if it has both a Weekly and Daily zone):
+[PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/1st Touch] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Path] | [Risk Tier]
 
 ─────────────────────────────────────────────────────────────────────
-⚠ UNREADABLE — verify manually before any analysis
-[PAIR] | Trend unreadable / Location unclear | SKIP until verified
+⚠ UNREADABLE — verify manually before relying on this pair
+[PAIR] | Supply & Demand Pro or Trend Direction Pro unreadable
 ─────────────────────────────────────────────────────────────────────
 
 ---
 
-SUMMARY (print after table):
+SUMMARY (print after the table):
 
 ── SCAN SUMMARY ──────────────────────────────────────────────
-Total scanned: 20
-VALID: X pairs | CAUTION: X pairs | SKIP: X pairs | UNREADABLE: X pairs
-Buys shortlisted: [list] | Sells shortlisted: [list]
+Total symbols scanned: X | Total zones found: X
+Tier 1.5%: X | Tier 1%: X | Tier 0.5%: X | UNREADABLE: X
 
-── EQ WATCHLIST — PAIRS NEAR 50% ────────────────────────────
-For any pair in Equilibrium zone (45–55%): list it here with an alert suggestion.
-Format: [PAIR] | [Daily trend] | [Current %] | Alert at [price] when price reaches [40% for buys / 60% for sells]
-If none: "No pairs in EQ this session"
+── ZONES PRICE IS APPROACHING ────────────────────────────────
+For any zone within roughly 1-2 ATR of current price: list it here.
+Format: [PAIR] | [Weekly/Daily] [Supply/Demand] | [Risk Tier] | Current price [X] vs zone [range]
+This is your manual-alert shortlist for now — automated alerts are a later phase, not built yet.
+If none: "No zones within range this session."
 
-── READY TO ANALYZE ──────────────────────────────────────────
-List all VALID and CAUTION pairs only, sorted by conviction.
-Confirmed Trending first, then Confirmed Ranging, then Unconfirmed.
-Within each group: sells sorted highest location % first, buys sorted lowest % first.
-
-Print this exact copyable command at the end:
----
-"Run analysis-prompt.txt on [PAIR1], then [PAIR2], then [PAIR3]. Do not switch symbols between analyses unless instructed."
----
-If no actionable pairs: "No actionable pairs this session."
+── FULL SHORTLIST ────────────────────────────────────────────
+All zones from the table above, sorted by conviction (HTF Coverage + tier), for you to review visually
+and set your own price alerts on the ones you want to track.
+If no actionable zones: "No actionable zones this session."

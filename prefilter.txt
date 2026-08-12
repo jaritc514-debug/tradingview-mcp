@@ -1,86 +1,58 @@
-PREFILTER SCAN — PxD Trading System
+PREFILTER SCAN — HTF Supply & Demand
 =====================================
-You are scanning the pair currently open on TradingView for the PxD trading system.
-Quick scan only — no entry levels, no fib math, no swing label hunting.
+You are scanning the pair currently open on TradingView for fresh HTF Supply & Demand zones.
+Quick scan only — no manual fib math, no entry calculation. See rules.json for the full rulebook.
 
 ---
 
-STEP 1 — READ TREND DIRECTION PRO (Daily)
+STEP 1 — PULL ZONES (Weekly + Daily)
+- chart_set_timeframe → Weekly
+- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record all active Weekly zones
 - chart_set_timeframe → Daily
-- data_get_pine_tables(study_filter="Trend Direction Pro") → read the table in the bottom-left corner
-- Extract the 1D row: Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)
-- Extract the 1W row: Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging)
-- If table cannot be read: capture_screenshot and read visually
+- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → record all active Daily zones
+- For each zone, read directly from its tags (do not recompute): formation (RBD/RBR/DBR/DBD), F (flip), O (original), LoL (level on level)
+- Freshness from bgColor: Fresh / 1st Touch / inactive (ignore inactive entirely) — see rules.json indicator_tags for exact bgColor values
+- If the indicator returns no data: flag this pair as UNREADABLE and stop here
 
-Daily Trend = your bias. Weekly = context only, never overrides.
+STEP 2 — HTF COVERAGE
+For each Daily zone, check whether it sits inside or overlaps a Weekly zone of the same type (both supply or both demand).
+HTF Coverage = Yes / No. Not mandatory — report both either way.
 
----
+STEP 3 — LEG-OUT QUALITY
+The indicator's own base-length filter is already capped at 6 candles — do not re-validate base length.
+For each zone, pull the candles around its formation via data_get_ohlcv and classify the candle that broke the base:
+  ≤49% body = indecisive | 50-75% = decisive | >75% (and abnormally large) = explosive
+Leg-out quality = Explosive / Decisive. If the breaking candle reads as indecisive, flag as unusual — the indicator likely wouldn't have drawn this zone.
 
-STEP 2 — CHECK PRICE LOCATION
-Call both in parallel:
-- data_get_pine_labels(study_filter="PxD Toolkit", verbose=true) → all swing labels with bar_index
-- quote_get → current price
+STEP 4 — TREND CONFLUENCE (tag only)
+- data_get_pine_tables(study_filter="Trend Direction Pro") → read Daily and Weekly rows
+- Record Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging) for both
+- Tag each zone as trend-aligned or trend-conflicting. NEVER exclude a zone based on this.
 
-Sort all labels by bar_index DESCENDING (highest bar_index = most recent)
-Swing low = most recent HL or LL label (highest bar_index among HL/LL labels)
-Swing high = most recent HH or LH label with bar_index HIGHER than the swing low's bar_index
-  → If none exists: swing high UNCONFIRMED
+STEP 5 — VALUATION CONFLUENCE (tag only, unverified)
+- data_get_pine_tables(study_filter="Campus Valuation Tool") — if this fails, try data_get_study_values(study_filter="Campus Valuation Tool")
+- This indicator's output format hasn't been confirmed live yet. Report whatever it returns as-is, and note in your output if the read attempt failed or looked malformed — that's useful signal for fixing rules.json.
+- Tag only. NEVER exclude a zone based on this, even once verified.
 
-State the swing low price and source label (e.g. "HL @ 0.77954, bar 911")
+STEP 6 — PROFIT CHECK
+From each zone's edge, look for the nearest opposing zone (Fresh or 1st Touch) in the direction price would move out of the zone.
+Path = Clear / Boxed in — [nearest opposing zone type] at [price range]
 
-If swing high confirmed:
-  Location % = (price − swing low) / (swing high − swing low) × 100
-
-If swing high unconfirmed:
-  Within 1 ATR above swing low → Discount (provisional)
-  1–3 ATR above → Premium (provisional)
-  More than 3 ATR above → Extreme Premium (provisional)
-  State: "Swing high unconfirmed — location provisional"
-
-Below 50% = Discount | ~50% = Equilibrium | Above 50% = Premium | Above 80% = Extreme Premium
-
----
-
-STEP 3 — CHECK PATH IS CLEAR
-- data_get_pine_boxes(study_filter="Supply & Demand Pro", verbose=true) → read S&D zones
-- Fresh zones = bgColor 2133728284 or 2116951068 (dark blue)
-- Touched zones = bgColor 439234094 or null — IGNORE completely
-- data_get_pine_tables(study_filter="PxD Toolkit") → read ATR value
-- Do NOT flag LQ labels as obstacles — LQ means liquidity already swept, it is positive confluence
-
-For BUYS (Daily Bullish):
-  Flag as OBSTACLE only if:
-  1. Current price is INSIDE a fresh Supply zone (zone low < current price < zone high)
-  2. A fresh Supply zone is within 1 ATR ABOVE current price (zone low < current price + ATR)
-  Everything else = ignore, do not mention
-
-For SELLS (Daily Bearish):
-  Flag as OBSTACLE only if:
-  1. Current price is INSIDE a fresh Demand zone (zone low < current price < zone high)
-  2. A fresh Demand zone is within 1 ATR BELOW current price (zone high > current price - ATR)
-  Everything else = ignore, do not mention
+STEP 7 — RISK TIER
+Apply the tier mapping from rules.json based on timeframe, freshness, leg-out quality, and HTF Coverage.
 
 ---
 
-OUTPUT — format exactly as follows:
+OUTPUT — one block per zone found (Weekly and Daily reported separately):
 
 PAIR: [pair]
-Daily: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging]
-Weekly: [Bullish/Bearish] | [Confirmed/Unconfirmed] | [Trending/Ranging]
-Weekly alignment: [Agrees / Conflicts / Neutral]
-Location: [Discount / Premium / Equilibrium] — [one sentence from screenshot]
-Path: [Clear / Obstacle — fresh [zone type] at [price range]]
+ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
+Freshness: [Fresh/1st Touch]  |  Leg-Out: [Explosive/Decisive]  |  HTF Coverage: [Yes/No]
+Tags: [F if flip]  [O if original]  [LoL if level-on-level]
+Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same] — [Aligned/Conflicting]
+Valuation: [raw read, or "unverified — see rules.json"]
+Path: [Clear / Boxed in — detail]
 
-VERDICT: VALID ✅ / CAUTION ⚠️ / SKIP ❌
-Reason: [one line — based only on trend direction + location + immediate path]
-Tags: [Daily Status] | [Daily Strength] | [Weekly alignment]
+SUGGESTED RISK TIER: [1.5% / 1% / 0.5%]
 
----
-
-VERDICT RULES:
-✅ VALID   — Daily has clear trend AND price is in correct location for that bias
-⚠️ CAUTION — Equilibrium location, OR price inside or within 1 ATR of a fresh zone
-❌ SKIP    — Trend Direction Pro unreadable OR no discernible Daily trend direction
-
-NEVER change verdict based on: Confirmed/Unconfirmed, Ranging/Trending, Weekly alignment.
-These are tags for data collection only — all setups are taken regardless.
+If no active zones on either timeframe: "No active zones on [pair] — Weekly or Daily."
