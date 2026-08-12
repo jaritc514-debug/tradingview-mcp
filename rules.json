@@ -67,10 +67,10 @@
   },
 
   "valuation_confluence": {
-    "source": "Campus Valuation Tool — data_get_pine_tables(study_filter='Campus Valuation Tool') or data_get_study_values if it's not a table",
+    "source": "Campus Valuation Tool (TradingView port, built later than the original TradeStation .ELD version) — data_get_pine_tables(study_filter='Campus Valuation Tool') or data_get_study_values if it's not a table",
     "status": "UNVERIFIED — exact output format (table vs. label, field names, value categories like undervalued/overvalued) has not been confirmed against the live indicator yet. Verify this first when live tool access is available, then fill in the real read method here.",
-    "rule": "Tag only, same as trend_confluence, pending confirmation. Never filter zones out based on valuation until explicitly revisited.",
-    "note": "A .ELD version of this tool exists in the trader's OTC course materials (TradeStation format) — the live TradingView version may differ in output. Confirm against what's actually on the chart, not assumptions from the .ELD file."
+    "benchmark_varies_by_asset": "The valuation comparison is NOT one fixed benchmark across all assets — e.g. currency pairs are read vs. DXY, other assets vs. interest rates. The indicator likely already selects the correct benchmark internally per asset; confirm this during live verification rather than assuming one comparison applies everywhere.",
+    "rule": "Tag only, same as trend_confluence, pending confirmation. Never filter zones out based on valuation until explicitly revisited."
   },
 
   "profit_check": {
