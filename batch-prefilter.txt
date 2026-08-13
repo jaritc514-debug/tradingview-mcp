@@ -49,6 +49,9 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    candle: ≤49% body = indecisive | 50-75% = decisive | >75% (abnormally large) = explosive
    Leg-out quality = Explosive / Decisive. If the fetched OHLCV window doesn't reach the zone's formation,
    report "not computed" rather than guessing.
+   Also classify the candle right after the breaking candle. strong_leg_out = TRUE if the breaking candle
+   is Explosive, OR if the breaking candle AND the next one are BOTH Decisive — only matters for the 2%
+   tier (Step 9), not the plain leg-out quality above.
 
 6. TREND CONFLUENCE (tag only)
    - data_get_pine_tables(study_filter="Trend Direction Pro") → Daily and Weekly rows
@@ -76,18 +79,25 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    Path = Clear / Boxed in.
 
 9. RISK TIER — DAILY ZONES ONLY
-   Apply the mapping from rules.json based on freshness, leg-out quality, HTF Coverage. No tier for
-   Weekly zones — see rules.json risk_tiers.scope_note.
+   Check top-down against rules.json risk_tiers — highest tier whose conditions are FULLY met:
+     2% (All Stars Aligned): HTF Coverage Yes AND strong_leg_out TRUE AND Weekly trend aligned with
+       direction (Daily aligned too is a bonus, not required) AND Extreme Undervalued (Demand/buy) or
+       Extreme Overvalued (Supply/sell). All four required, or fall through to the tiers below.
+     1.5%: Explosive or Decisive leg-out, HTF Coverage present
+     1%: Decisive+ leg-out, no HTF Coverage
+     0.5%: everything else that still clears the basic checklist
+   No tier for Weekly zones — see rules.json risk_tiers.scope_note.
 
 ---
 
 OUTPUT — print after every symbol on the watchlist has been scanned:
 
 SORT ORDER (Daily zones — these are the ones with a tier to sort by):
-1. HTF Coverage: Yes, tier 1.5% — highest conviction first
-2. HTF Coverage: Yes, tier 1% or 0.5%
-3. HTF Coverage: No, any tier — still real zones, just no Weekly confluence
-4. UNREADABLE — always last, separated by divider
+1. Tier 2% (All Stars Aligned) — highest conviction, always first
+2. HTF Coverage: Yes, tier 1.5%
+3. HTF Coverage: Yes, tier 1% or 0.5%
+4. HTF Coverage: No, any tier — still real zones, just no Weekly confluence
+5. UNREADABLE — always last, separated by divider
 Weekly zones (no tier) — group directly under their pair's Daily rows, order doesn't otherwise matter.
 
 TABLE FORMAT (one line per zone — a pair may appear more than once, up to 2 Weekly + 3 Daily zones per side):
@@ -107,7 +117,7 @@ SUMMARY (print after the table):
 
 ── SCAN SUMMARY ──────────────────────────────────────────────
 Total symbols scanned: X | Total zones found: X
-Tier 1.5%: X | Tier 1%: X | Tier 0.5%: X | UNREADABLE: X
+Tier 2%: X | Tier 1.5%: X | Tier 1%: X | Tier 0.5%: X | UNREADABLE: X
 
 ── ZONES PRICE IS APPROACHING ────────────────────────────────
 For any zone within roughly 1-2 ATR of current price: list it here.

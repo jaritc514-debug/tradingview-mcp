@@ -40,6 +40,9 @@ Leg-out quality = Explosive / Decisive. If the OHLCV window fetched doesn't reac
 formation (older zone, small pair, whatever), report "not computed — formation predates fetched history"
 rather than guessing — don't force a classification. If the breaking candle reads as indecisive, flag as
 unusual — the indicator likely wouldn't have drawn this zone.
+Also check the candle immediately AFTER the breaking candle and classify it too. strong_leg_out = TRUE if
+the breaking candle is Explosive, OR if the breaking candle AND the next candle are BOTH Decisive — this
+stricter check only matters for the 2% risk tier (Step 7), not the normal leg-out quality reported above.
 
 STEP 4 — TREND CONFLUENCE (tag only)
 - data_get_pine_tables(study_filter="Trend Direction Pro") → read Daily and Weekly rows
@@ -75,7 +78,13 @@ for Weekly zones, no Entry/SL/TP line for them.
   and its price).
 
 STEP 7 — RISK TIER — DAILY ZONES ONLY
-Apply the tier mapping from rules.json risk_tiers based on freshness, leg-out quality, and HTF Coverage.
+Check top-down against rules.json risk_tiers — a zone gets the highest tier whose conditions it fully meets:
+  2% (All Stars Aligned): HTF Coverage Yes AND strong_leg_out TRUE AND Weekly trend aligned with direction
+    (Daily aligned too is a bonus, not required) AND Extreme Undervalued (Demand/buy) or Extreme
+    Overvalued (Supply/sell). ALL FOUR required — if any one fails, check the tiers below instead.
+  1.5%: Explosive or Decisive leg-out, HTF Coverage present
+  1%: Decisive+ leg-out, no HTF Coverage
+  0.5%: everything else that still clears the basic checklist
 No tier for Weekly zones — see risk_tiers.scope_note.
 
 ---
@@ -93,6 +102,6 @@ Daily zones only — omit these two lines entirely for Weekly zones:
 Entry/SL/TP: [entry] / [SL] / [TP at 2R]
 Path: [Clear / Boxed in — detail]
 
-SUGGESTED RISK TIER (Daily zones only — omit for Weekly): [1.5% / 1% / 0.5%]
+SUGGESTED RISK TIER (Daily zones only — omit for Weekly): [2% / 1.5% / 1% / 0.5%]
 
 If no active zones on either timeframe: "No active zones on [pair] — Weekly or Daily."

@@ -187,6 +187,6 @@ Classify the raw numeric value into 5 states (rules.json valuation_confluence.cl
 5. Trend tag: Trend Direction Pro Daily + Weekly rows (Rule 1 — never disqualifies)
 6. Valuation tag: pick CampusValuationTool / Supreme Valuation / MTF Cross Pairs Valuation by asset type (Rule 6 — never disqualifies)
 7. Profit check: nearest opposing Fresh/1st Touch zone in the direction out of this zone — Clear or Boxed in
-8. Risk tier: map to 1.5% / 1% / 0.5% per rules.json based on timeframe, freshness, leg-out quality, and HTF Coverage
+8. Risk tier: map to 2% / 1.5% / 1% / 0.5% per rules.json risk_tiers, checked top-down — 2% ("All Stars Aligned") requires HTF Coverage + strong_leg_out (Explosive or 2 consecutive Decisive) + Weekly trend aligned + Extreme valuation matching direction, all four at once
 9. Report the zone regardless of trend/valuation alignment — those are tags for the trader's judgment, not gates
 10. Alerts are manual for now — automated proximity alerts are a later phase, not built yet
