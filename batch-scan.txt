@@ -61,8 +61,10 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
 
 7. VALUATION CONFLUENCE (tag only — pick the right indicator per asset, see rules.json)
    - Daily timeframe ONLY — never read valuation on Weekly. Chart should already be on Daily from step 3,
-     confirm before this read. One read per symbol (see Step 0's table format note — same read applies to
-     that symbol's Weekly and Daily zone rows alike).
+     confirm before this read. One read per symbol.
+   - DAILY ROWS ONLY. It's a flat per-symbol reading, identical regardless of which zone — don't attach it
+     to Weekly rows in the output table at all, that's misleading clutter, not a per-zone signal. Trend
+     still shows on Weekly rows (real input to the 2% tier), valuation does not.
    - Classify each symbol first, then use the matching study_filter — don't try all three per symbol:
        Currency future / FX major / commodity / metal → study_filter="CampusValuationTool" (no spaces)
        Index future (NQ/YM/ES/RTY)                     → study_filter="Supreme Valuation"
@@ -107,10 +109,10 @@ Weekly zones (no tier) — group directly under their pair's Daily rows, order d
 
 TABLE FORMAT (one line per zone — a pair may appear more than once, up to 2 Weekly + 3 Daily zones per side):
 [PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/Touched] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Valuation state] | [Path] | [Risk Tier]
-Weekly rows: Leg-Out, Path, and Risk Tier are always "—" (not traded directly, confluence-only — leg-out
-isn't computed for Weekly zones at all, see Step 5).
+Weekly rows: Leg-Out, Valuation, Path, and Risk Tier are always "—" (not traded directly, confluence-only
+— leg-out isn't computed and valuation isn't attached for Weekly zones at all, see Steps 5 and 7).
 Valuation is read once per symbol on the Daily timeframe only (never Weekly, see Step 7) — reuse that
-same read for both the Weekly-zone and Daily-zone rows for that pair rather than re-fetching per zone.
+same read across all of that pair's Daily rows, but never show it on that pair's Weekly rows at all.
 
 ─────────────────────────────────────────────────────────────────────
 ⚠ UNREADABLE — verify manually before relying on this pair

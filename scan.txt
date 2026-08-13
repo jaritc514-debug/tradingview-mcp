@@ -53,8 +53,10 @@ STEP 4 — TREND CONFLUENCE (tag only)
 
 STEP 5 — VALUATION CONFLUENCE (tag only — pick the right indicator per asset, see rules.json)
 - Daily timeframe ONLY — never read valuation on Weekly. chart_set_timeframe should already be Daily from
-  Step 1, but confirm before this read. One read for the whole symbol — reuse the same result in both the
-  Weekly-zone and Daily-zone output blocks below, don't re-read per zone.
+  Step 1, but confirm before this read. One read for the whole symbol.
+- DAILY ZONE OUTPUT ONLY. It's a flat per-symbol reading, identical no matter which zone you're looking
+  at, so don't attach it to Weekly zone blocks at all — that's misleading, not a real per-zone signal.
+  Trend still appears on Weekly (it's a real input to the 2% tier), valuation does not.
 - Classify the pair first, then use the matching study_filter — do not try all three:
     Currency future / FX major / commodity / metal → study_filter="CampusValuationTool" (exact, no spaces)
     Index future (NQ/YM/ES/RTY)                     → study_filter="Supreme Valuation"
@@ -101,9 +103,9 @@ ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
 Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed, or "—" for Weekly zones — not computed at all, see Step 3]  |  HTF Coverage: [Yes/No]
 Tags: [F if flip]  [O if original]  [LoL if level-on-level]
 Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same] — [Aligned/Conflicting]
-Valuation: [Extreme Overvalued / Overvalued / Neutral / Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed
 
-Daily zones only — omit these two lines entirely for Weekly zones:
+Daily zones only — omit this line and the two below entirely for Weekly zones:
+Valuation: [Extreme Overvalued / Overvalued / Neutral / Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed
 Entry/SL/TP: [entry] / [SL] / [TP at 2R]
 Path: [Clear / Boxed in — detail]
 

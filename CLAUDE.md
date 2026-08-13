@@ -176,7 +176,7 @@ Rule 5 — Leg-Out Quality (Daily zones only):
 Rule 6 — Valuation Confluence (tag only, three separate indicators — pick by asset type):
 "There is no single valuation indicator — there are three, and you must pick the right one per symbol, not try all three. Currency futures, FX majors, commodities, and metals → study_filter='CampusValuationTool' (exact, one word, no spaces — a prior attempt used 'Campus Valuation Tool' with spaces and got nothing back, likely just a name mismatch, not a real read failure). Index futures (NQ/YM/ES/RTY) → study_filter='Supreme Valuation'. FX cross pairs (non-USD, e.g. EURGBP, GBPJPY) → study_filter='MTF Cross Pairs Valuation'. Read via data_get_pine_tables, or data_get_study_values as fallback. If the corrected name still fails, the indicator's bottom pane may need to be actively visible before TradingView renders its data for CDP reads.
 
-Read on the DAILY timeframe only — never Weekly. One read per symbol, reused for both that symbol's Weekly and Daily zone reports.
+Read on the DAILY timeframe only — never Weekly. One read per symbol. DAILY ZONE OUTPUT ONLY — it's a flat per-symbol reading, identical regardless of which zone, so don't attach it to Weekly zone reports at all (unlike Trend, which does stay on Weekly since it's a real input to the 2% tier's Weekly-alignment condition).
 
 Classify the raw numeric value into 5 states (rules.json valuation_confluence.classification, confirmed by the user): value >= 75 Extreme Overvalued, 0.5 to 74.99 Overvalued, -0.5 to 0.5 Neutral, -74.99 to -0.5 Undervalued, value <= -75 Extreme Undervalued. Sign = directional lean (negative supports longs, positive supports shorts, per the trader's own rule), magnitude = strength — extreme readings are the strongest confluence. Tag only, same as trend — never exclude a zone based on this, even once readable."
 
@@ -187,7 +187,7 @@ Classify the raw numeric value into 5 states (rules.json valuation_confluence.cl
 3. HTF Coverage: does a Daily zone sit inside a Weekly zone of the same type?
 4. Leg-out quality: classify the breaking candle from raw OHLCV — Daily zones only, skip entirely for Weekly (Rule 5)
 5. Trend tag: Trend Direction Pro Daily + Weekly rows (Rule 1 — never disqualifies)
-6. Valuation tag: pick CampusValuationTool / Supreme Valuation / MTF Cross Pairs Valuation by asset type (Rule 6 — never disqualifies)
+6. Valuation tag: pick CampusValuationTool / Supreme Valuation / MTF Cross Pairs Valuation by asset type — Daily zones only, not shown on Weekly (Rule 6 — never disqualifies)
 7. Profit check: nearest opposing Fresh/1st Touch zone in the direction out of this zone — Clear or Boxed in
 8. Risk tier: map to 2% / 1.5% / 1% / 0.5% per rules.json risk_tiers, checked top-down — 2% ("All Stars Aligned") requires HTF Coverage + strong_leg_out (Explosive or 2 consecutive Decisive) + Weekly trend aligned + Extreme valuation matching direction, all four at once
 9. Report the zone regardless of trend/valuation alignment — those are tags for the trader's judgment, not gates
