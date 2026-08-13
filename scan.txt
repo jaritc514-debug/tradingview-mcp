@@ -94,6 +94,13 @@ Check top-down against rules.json risk_tiers — a zone gets the highest tier wh
   0.5%: everything else that still clears the basic checklist
 No tier for Weekly zones — see risk_tiers.scope_note.
 
+STEP 8 — PROXIMITY CHECK (drives the Action Summary only — doesn't affect scope, tiers, or the main zone
+list above, which always reports every in-scope zone regardless of distance)
+Pull ~14 recent Daily candles via data_get_ohlcv and compute a simple ATR (average high-low range — see
+rules.json proximity_check.atr_method, this is a rough gauge, not a precision indicator). A zone is
+"actionable now" if current price is within roughly 1-2 ATR of its proximal (near) edge. Applies to both
+Weekly and Daily in-scope zones — Weekly can be "approaching" too, it just still never gets Entry/SL/TP.
+
 ---
 
 OUTPUT — one header per pair, then one block per in-scope zone (Weekly and Daily reported separately,
@@ -107,7 +114,7 @@ Valuation (Daily zones only, doesn't apply to Weekly): [Extreme Overvalued / Ove
 Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed
 
 ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
-Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed, or "—" for Weekly zones — not computed at all, see Step 3]  |  HTF Coverage: [Yes/No]
+Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed, or "—" for Weekly zones — not computed at all, see Step 3]  |  HTF Coverage: [Yes/No for Daily zones; "n/a (Weekly)" for Weekly zones — Weekly zones are the source of HTF Coverage, not the receiver, see Step 2]
 Tags: [F if flip]  [O if original]  [LoL if level-on-level]
 Trend fit: [Aligned/Conflicting] (against the header's trend reading — don't restate the full reading here)
 
@@ -117,3 +124,21 @@ Path: [Clear / Boxed in — detail]
 SUGGESTED RISK TIER: [2% / 1.5% / 1% / 0.5%]
 
 If no active zones on either timeframe: "No active zones on [pair] — Weekly or Daily."
+
+NOTES — include whenever there's something worth flagging (a capped leg-out, an indecisive/unusual breaking
+candle, why nothing reached 2%, an UNREADABLE indicator, etc.); omit only if the scan came back clean with
+nothing to explain. Short bullet points, not full sentences per zone.
+
+── ACTION SUMMARY ──────────────────────────────────────────────
+Direct answer, not a re-list of the technical detail above: is anything on [PAIR] worth acting on before the
+next scan (weekend / Wednesday)? Per rules.json proximity_check, a zone counts as "actionable now" if current
+price is within roughly 1-2 ATR (computed from the last ~14 Daily candles) of the zone's near edge. Zones
+farther out are already fully reported above — don't repeat them here, they're not due for attention yet.
+
+If one or more zones are within range, closest first:
+[Weekly/Daily] [Supply/Demand] @ [range] — [~X.X ATR away] — [Risk Tier, or "confluence only, no tier" for
+Weekly] — [what to do: e.g. "Watch for entry near 0.71313, SL 0.71551, TP 0.70837" for Daily; "No direct
+entry — Weekly confluence zone, watch how Daily reacts here" for Weekly]
+
+If nothing is within range: "Nothing actionable on [PAIR] right now — nearest zone is ~X ATR away. Recheck
+at the next scan."

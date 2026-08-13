@@ -119,6 +119,13 @@
     "0.5%": "Fresh Daily zone that still clears the basic checklist but leg-out is not computed/indecisive, or trend-conflicting"
   },
 
+  "proximity_check": {
+    "description": "Added 2026-08-13 to drive the Action Summary section in scan.txt (and the existing 'zones price is approaching' shortlist in batch-scan.txt) — distinct from HTF Coverage/risk tiers. This only flags which of the already-reported zones are close enough to current price to act on before the next scan, at the twice-weekly cadence (weekend + Wednesday). Everything stays fully reported in the main zone list either way; this just filters what shows up in the direct action-oriented summary at the bottom.",
+    "atr_method": "Simple average high-low range over the most recent ~14 Daily candles from data_get_ohlcv. A rough proximity gauge, not a precision indicator — true range / Wilder's smoothing isn't needed here.",
+    "threshold": "A zone is 'actionable now' if current price is within roughly 1-2 ATR of the zone's proximal edge (the boundary nearest current price). Applies to Weekly and Daily zones alike — a Weekly zone can be 'approaching' too, it just never gets Entry/SL/TP regardless.",
+    "rule": "Zones farther than ~2 ATR away are still reported in full in the main zone list — they're only excluded from the Action Summary / approaching-zones shortlist, since at this scan's cadence they aren't worth acting on yet."
+  },
+
   "checklist_reference": "This rulebook mirrors the C1-C8 zone-setup checklist and risk tiers documented in the ote-journal Playbook. Keep both in sync — the journal is where trades get logged against this same checklist; this file is what finds the zones in the first place.",
 
   "risk_rules": {

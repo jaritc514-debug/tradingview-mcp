@@ -128,7 +128,9 @@ Total symbols scanned: X | Total zones found: X
 Tier 2%: X | Tier 1.5%: X | Tier 1%: X | Tier 0.5%: X | UNREADABLE: X
 
 ── ZONES PRICE IS APPROACHING ────────────────────────────────
-For any zone within roughly 1-2 ATR of current price: list it here.
+Same proximity method as scan.txt's Action Summary — see rules.json proximity_check. ATR = average high-low
+range over the last ~14 Daily candles per symbol; a zone is "within range" if current price sits within
+roughly 1-2 ATR of the zone's proximal (near) edge. Applies to Weekly and Daily zones alike.
 Format: [PAIR] | [Weekly/Daily] [Supply/Demand] | [Risk Tier or "—" for Weekly] | Current price [X] vs zone [range]
 This is your manual-alert shortlist for now — automated alerts are a later phase, not built yet.
 If none: "No zones within range this session."

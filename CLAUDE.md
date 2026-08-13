@@ -192,3 +192,4 @@ Classify the raw numeric value into 5 states (rules.json valuation_confluence.cl
 8. Risk tier: map to 2% / 1.5% / 1% / 0.5% per rules.json risk_tiers, checked top-down — 2% ("All Stars Aligned") requires HTF Coverage + strong_leg_out (Explosive or 2 consecutive Decisive) + Weekly trend aligned + Extreme valuation matching direction, all four at once
 9. Report the zone regardless of trend/valuation alignment — those are tags for the trader's judgment, not gates
 10. Alerts are manual for now — automated proximity alerts are a later phase, not built yet
+11. Action Summary: after the full zone list, compute ATR proximity (rules.json proximity_check) and call out only the zones within ~1-2 ATR of current price as directly actionable before the next scan — this is the plain-language "what needs attention now" answer, separate from the full technical report above it
