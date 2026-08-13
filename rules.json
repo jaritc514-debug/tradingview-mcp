@@ -89,6 +89,14 @@
     "selection_rule": "Before reading valuation for a symbol: classify it first (currency future / FX major / commodity / metal → CampusValuationTool; index future → Supreme Valuation; FX cross pair → MTF Cross Pairs Valuation), then call data_get_pine_tables with that specific study_filter. Do not try all three and guess from whichever responds.",
     "status": "UNREADABLE as of 2026-08-12 with the wrong name ('Campus Valuation Tool' with spaces). Not yet re-tested with the corrected exact name.",
     "fallback_theory": "If the corrected name still doesn't work: these oscillators may need their bottom pane actively expanded/visible before TradingView renders their Pine graphics for CDP reads — consistent with 'Pine indicators must be visible on chart for pine graphics tools to read their data.' Try chart_get_state or ui_click on the pane's legend before the read as a second fix if the name correction alone doesn't resolve it.",
+    "classification": {
+      "description": "Convert whatever raw numeric value the indicator returns into one of 5 states. Confirmed by the user 2026-08-12. Sign = directional lean (negative supports longs, positive supports shorts, per the user's own rule: fine going long under 0, fine going short over 0). Magnitude = strength of that lean — extreme readings are the strongest confluence.",
+      "extreme_overvalued": "value >= 75",
+      "overvalued": "0.5 <= value < 75",
+      "neutral": "-0.5 < value < 0.5 — a small buffer around exact 0 for floating-point noise, not a wide dead zone. Confirmed intentional: the user treats any non-zero reading as directionally meaningful, so this band stays tight.",
+      "undervalued": "-75 < value <= -0.5",
+      "extreme_undervalued": "value <= -75"
+    },
     "rule": "Tag only, same as trend_confluence. Never filter zones out based on valuation, even once readable."
   },
 

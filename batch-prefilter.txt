@@ -61,8 +61,11 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
        FX cross pair (non-USD)                          → study_filter="MTF Cross Pairs Valuation"
    - data_get_pine_tables(study_filter=<selected above>) or data_get_study_values as fallback
    - Prior UNREADABLE result was likely the wrong name, not a real read failure — retest with the
-     corrected names before assuming the pane-visibility theory applies. Report raw read or "unreadable"
-     per symbol if it still fails. Never excludes a zone.
+     corrected names before assuming the pane-visibility theory applies.
+   - Convert the raw value to a state per rules.json valuation_confluence.classification:
+       >= 75 Extreme Overvalued | 0.5 to 74.99 Overvalued | -0.5 to 0.5 Neutral
+       -74.99 to -0.5 Undervalued | <= -75 Extreme Undervalued
+   - Report the classified state per symbol, or "unreadable" if the read still fails. Never excludes a zone.
 
 8. PROFIT CHECK (2R-based) — DAILY ZONES ONLY
    Weekly is never entered directly — it's an odds-enhancer for HTF Coverage only. Skip this step for
@@ -88,8 +91,10 @@ SORT ORDER (Daily zones — these are the ones with a tier to sort by):
 Weekly zones (no tier) — group directly under their pair's Daily rows, order doesn't otherwise matter.
 
 TABLE FORMAT (one line per zone — a pair may appear more than once, up to 2 Weekly + 3 Daily zones per side):
-[PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/Touched] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Path] | [Risk Tier]
+[PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/Touched] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Valuation state] | [Path] | [Risk Tier]
 Weekly rows: Path and Risk Tier are always "—" (not traded directly, confluence-only).
+Valuation only needs to be read once per symbol (it doesn't change between that symbol's Weekly and
+Daily zones) — reuse the same read across all zones for that pair rather than re-fetching per zone.
 
 ─────────────────────────────────────────────────────────────────────
 ⚠ UNREADABLE — verify manually before relying on this pair

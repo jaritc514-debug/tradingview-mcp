@@ -57,6 +57,9 @@ STEP 5 — VALUATION CONFLUENCE (tag only — pick the right indicator per asset
   match "CampusValuationTool"). If the corrected name still fails, the indicator's bottom pane may need
   to be actively visible/expanded before TradingView renders its data for CDP reads — try chart_get_state
   or ui_click on the pane's legend before retrying.
+- Convert the raw numeric value to a state per rules.json valuation_confluence.classification:
+    >= 75 Extreme Overvalued | 0.5 to 74.99 Overvalued | -0.5 to 0.5 Neutral
+    -74.99 to -0.5 Undervalued | <= -75 Extreme Undervalued
 - Tag only. NEVER exclude a zone based on this, even once readable.
 
 STEP 6 — PROFIT CHECK (2R-based, per rules.json profit_check) — DAILY ZONES ONLY
@@ -84,7 +87,7 @@ ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
 Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed]  |  HTF Coverage: [Yes/No]
 Tags: [F if flip]  [O if original]  [LoL if level-on-level]
 Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same] — [Aligned/Conflicting]
-Valuation: [raw read, or "unverified — see rules.json"]
+Valuation: [Extreme Overvalued / Overvalued / Neutral / Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed
 
 Daily zones only — omit these two lines entirely for Weekly zones:
 Entry/SL/TP: [entry] / [SL] / [TP at 2R]
