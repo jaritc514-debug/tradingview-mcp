@@ -31,10 +31,12 @@ STEP 2 — HTF COVERAGE
 For each in-scope Daily zone, check whether it sits inside or overlaps an in-scope Weekly zone of the
 same type (both supply or both demand). HTF Coverage = Yes / No. Not mandatory — report both either way.
 
-STEP 3 — LEG-OUT QUALITY
+STEP 3 — LEG-OUT QUALITY — DAILY ZONES ONLY
+Weekly zones never get a risk tier or Entry/SL/TP, so skip this step entirely for them — don't fetch
+Weekly OHLCV or classify Weekly breaking candles at all, this was wasted work.
 The indicator's own base-length filter is already capped at 6 candles — do not re-validate base length.
-For each in-scope zone, pull candles via data_get_ohlcv around its formation and classify the candle that
-broke the base:
+For each in-scope DAILY zone, pull candles via data_get_ohlcv around its formation and classify the
+candle that broke the base:
   ≤49% body = indecisive | 50-75% = decisive | >75% (and abnormally large) = explosive
 Leg-out quality = Explosive / Decisive. If the OHLCV window fetched doesn't reach back to the zone's
 formation (older zone, small pair, whatever), report "not computed — formation predates fetched history"
@@ -96,7 +98,7 @@ OUTPUT — one block per in-scope zone found (Weekly and Daily reported separate
 
 PAIR: [pair]
 ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
-Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed]  |  HTF Coverage: [Yes/No]
+Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed, or "—" for Weekly zones — not computed at all, see Step 3]  |  HTF Coverage: [Yes/No]
 Tags: [F if flip]  [O if original]  [LoL if level-on-level]
 Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same] — [Aligned/Conflicting]
 Valuation: [Extreme Overvalued / Overvalued / Neutral / Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed

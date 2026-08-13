@@ -43,10 +43,12 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    For each in-scope Daily zone, check if it sits inside or overlaps an in-scope Weekly zone of the same
    type. HTF Coverage = Yes / No. Report both either way — not a filter.
 
-5. LEG-OUT QUALITY
+5. LEG-OUT QUALITY — DAILY ZONES ONLY
+   Weekly zones never get a risk tier or Entry/SL/TP, so skip this step entirely for them — don't fetch
+   Weekly OHLCV or classify Weekly breaking candles, that's wasted work for a value that's never used.
    Base length already filtered by the indicator (max 6 candles) — do not re-validate.
-   For each in-scope zone, pull candles via data_get_ohlcv around its formation and classify the breaking
-   candle: ≤49% body = indecisive | 50-75% = decisive | >75% (abnormally large) = explosive
+   For each in-scope DAILY zone, pull candles via data_get_ohlcv around its formation and classify the
+   breaking candle: ≤49% body = indecisive | 50-75% = decisive | >75% (abnormally large) = explosive
    Leg-out quality = Explosive / Decisive. If the fetched OHLCV window doesn't reach the zone's formation,
    report "not computed" rather than guessing.
    Also classify the candle right after the breaking candle. strong_leg_out = TRUE if the breaking candle
@@ -105,7 +107,8 @@ Weekly zones (no tier) — group directly under their pair's Daily rows, order d
 
 TABLE FORMAT (one line per zone — a pair may appear more than once, up to 2 Weekly + 3 Daily zones per side):
 [PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/Touched] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Valuation state] | [Path] | [Risk Tier]
-Weekly rows: Path and Risk Tier are always "—" (not traded directly, confluence-only).
+Weekly rows: Leg-Out, Path, and Risk Tier are always "—" (not traded directly, confluence-only — leg-out
+isn't computed for Weekly zones at all, see Step 5).
 Valuation is read once per symbol on the Daily timeframe only (never Weekly, see Step 7) — reuse that
 same read for both the Weekly-zone and Daily-zone rows for that pair rather than re-fetching per zone.
 
