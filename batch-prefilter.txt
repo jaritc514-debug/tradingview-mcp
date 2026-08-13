@@ -54,9 +54,13 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    - data_get_pine_tables(study_filter="Trend Direction Pro") → Daily and Weekly rows
    - Tag each zone trend-aligned or trend-conflicting. Never excludes a zone.
 
-7. VALUATION CONFLUENCE (tag only, unverified)
+7. VALUATION CONFLUENCE (tag only, currently unreadable)
+   - Leading theory (unconfirmed): Campus Valuation Tool sits in its own bottom pane and needs that pane
+     expanded (double-click) before TradingView renders its data — try checking/forcing pane visibility
+     (chart_get_state or ui_click on its legend) before reading, if a way to do that exists.
    - data_get_pine_tables(study_filter="Campus Valuation Tool") or data_get_study_values as fallback
-   - Report raw read or "unverified" if it fails. Never excludes a zone.
+   - Confirmed unreadable as of 2026-08-12 (empty on two live pairs), not just unverified. Report raw read
+     or "unreadable" if it fails. Never excludes a zone.
 
 8. PROFIT CHECK (2R-based) — DAILY ZONES ONLY
    Weekly is never entered directly — it's an odds-enhancer for HTF Coverage only. Skip this step for

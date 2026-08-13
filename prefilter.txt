@@ -46,12 +46,17 @@ STEP 4 — TREND CONFLUENCE (tag only)
 - Record Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging) for both
 - Tag each zone as trend-aligned or trend-conflicting. NEVER exclude a zone based on this.
 
-STEP 5 — VALUATION CONFLUENCE (tag only, unverified)
+STEP 5 — VALUATION CONFLUENCE (tag only, currently unreadable)
+- Before reading: Campus Valuation Tool renders in its own pane at the bottom of the chart and may need
+  its pane expanded (double-click) before TradingView actually computes/renders its data — this is the
+  leading theory for why it's come back empty so far. If a way to check/force pane visibility is available
+  (chart_get_state indicator list, or ui_click on its legend), try that first.
 - data_get_pine_tables(study_filter="Campus Valuation Tool") — if this fails, try
   data_get_study_values(study_filter="Campus Valuation Tool")
-- This indicator's output format hasn't been confirmed live yet (as of 2026-08-12 both reads came back
-  empty on a live test). Report whatever comes back as-is, and note if the read failed or looked malformed.
-- Tag only. NEVER exclude a zone based on this, even once verified.
+- As of 2026-08-12 both reads came back empty on two live pairs — confirmed unreadable, not just
+  unverified. Report whatever comes back as-is, and note if the read failed or looked malformed — useful
+  signal for narrowing down the fix.
+- Tag only. NEVER exclude a zone based on this, even once readable.
 
 STEP 6 — PROFIT CHECK (2R-based, per rules.json profit_check) — DAILY ZONES ONLY
 Weekly is never entered directly — it's an odds-enhancer for HTF Coverage only. Skip this step entirely
