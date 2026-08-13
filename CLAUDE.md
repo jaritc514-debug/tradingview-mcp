@@ -176,6 +176,8 @@ Rule 5 — Leg-Out Quality:
 Rule 6 — Valuation Confluence (tag only, three separate indicators — pick by asset type):
 "There is no single valuation indicator — there are three, and you must pick the right one per symbol, not try all three. Currency futures, FX majors, commodities, and metals → study_filter='CampusValuationTool' (exact, one word, no spaces — a prior attempt used 'Campus Valuation Tool' with spaces and got nothing back, likely just a name mismatch, not a real read failure). Index futures (NQ/YM/ES/RTY) → study_filter='Supreme Valuation'. FX cross pairs (non-USD, e.g. EURGBP, GBPJPY) → study_filter='MTF Cross Pairs Valuation'. Read via data_get_pine_tables, or data_get_study_values as fallback. If the corrected name still fails, the indicator's bottom pane may need to be actively visible before TradingView renders its data for CDP reads.
 
+Read on the DAILY timeframe only — never Weekly. One read per symbol, reused for both that symbol's Weekly and Daily zone reports.
+
 Classify the raw numeric value into 5 states (rules.json valuation_confluence.classification, confirmed by the user): value >= 75 Extreme Overvalued, 0.5 to 74.99 Overvalued, -0.5 to 0.5 Neutral, -74.99 to -0.5 Undervalued, value <= -75 Extreme Undervalued. Sign = directional lean (negative supports longs, positive supports shorts, per the trader's own rule), magnitude = strength — extreme readings are the strongest confluence. Tag only, same as trend — never exclude a zone based on this, even once readable."
 
 ## HTF Supply & Demand Scan Checklist

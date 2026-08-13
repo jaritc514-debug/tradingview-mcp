@@ -50,6 +50,9 @@ STEP 4 — TREND CONFLUENCE (tag only)
 - Tag each zone as trend-aligned or trend-conflicting. NEVER exclude a zone based on this.
 
 STEP 5 — VALUATION CONFLUENCE (tag only — pick the right indicator per asset, see rules.json)
+- Daily timeframe ONLY — never read valuation on Weekly. chart_set_timeframe should already be Daily from
+  Step 1, but confirm before this read. One read for the whole symbol — reuse the same result in both the
+  Weekly-zone and Daily-zone output blocks below, don't re-read per zone.
 - Classify the pair first, then use the matching study_filter — do not try all three:
     Currency future / FX major / commodity / metal → study_filter="CampusValuationTool" (exact, no spaces)
     Index future (NQ/YM/ES/RTY)                     → study_filter="Supreme Valuation"

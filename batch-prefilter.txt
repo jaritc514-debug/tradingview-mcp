@@ -58,6 +58,9 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    - Tag each zone trend-aligned or trend-conflicting. Never excludes a zone.
 
 7. VALUATION CONFLUENCE (tag only — pick the right indicator per asset, see rules.json)
+   - Daily timeframe ONLY — never read valuation on Weekly. Chart should already be on Daily from step 3,
+     confirm before this read. One read per symbol (see Step 0's table format note — same read applies to
+     that symbol's Weekly and Daily zone rows alike).
    - Classify each symbol first, then use the matching study_filter — don't try all three per symbol:
        Currency future / FX major / commodity / metal → study_filter="CampusValuationTool" (no spaces)
        Index future (NQ/YM/ES/RTY)                     → study_filter="Supreme Valuation"
@@ -103,8 +106,8 @@ Weekly zones (no tier) — group directly under their pair's Daily rows, order d
 TABLE FORMAT (one line per zone — a pair may appear more than once, up to 2 Weekly + 3 Daily zones per side):
 [PAIR] | [Weekly/Daily] | [Supply/Demand — formation] | [Fresh/Touched] | [Leg-Out] | [HTF Coverage] | [Trend tag] | [Valuation state] | [Path] | [Risk Tier]
 Weekly rows: Path and Risk Tier are always "—" (not traded directly, confluence-only).
-Valuation only needs to be read once per symbol (it doesn't change between that symbol's Weekly and
-Daily zones) — reuse the same read across all zones for that pair rather than re-fetching per zone.
+Valuation is read once per symbol on the Daily timeframe only (never Weekly, see Step 7) — reuse that
+same read for both the Weekly-zone and Daily-zone rows for that pair rather than re-fetching per zone.
 
 ─────────────────────────────────────────────────────────────────────
 ⚠ UNREADABLE — verify manually before relying on this pair
