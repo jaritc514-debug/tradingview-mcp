@@ -1,4 +1,4 @@
-PREFILTER SCAN — HTF Supply & Demand
+SCAN — HTF Supply & Demand
 =====================================
 You are scanning the pair currently open on TradingView for HTF Supply & Demand zones. Weekly zones can be
 Fresh or Touched (confluence only). Daily zones are Fresh-only — the user does not enter on Touched Daily
@@ -96,19 +96,24 @@ No tier for Weekly zones — see risk_tiers.scope_note.
 
 ---
 
-OUTPUT — one block per in-scope zone found (Weekly and Daily reported separately, nearest-to-price first):
+OUTPUT — one header per pair, then one block per in-scope zone (Weekly and Daily reported separately,
+nearest-to-price first). Trend and Valuation are flat per-symbol facts — state them ONCE in the header,
+not repeated in every zone block. Each zone only shows how it relates to those facts (Trend fit), not the
+raw readings again.
 
-PAIR: [pair]
+=== [PAIR] — HTF Supply & Demand Scan (last price: [price]) ===
+Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same]
+Valuation (Daily zones only, doesn't apply to Weekly): [Extreme Overvalued / Overvalued / Neutral /
+Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed
+
 ZONE: [Weekly/Daily] [Supply/Demand] @ [price range] — [RBD/RBR/DBR/DBD]
 Freshness: [Fresh/Touched]  |  Leg-Out: [Explosive/Decisive/not computed, or "—" for Weekly zones — not computed at all, see Step 3]  |  HTF Coverage: [Yes/No]
 Tags: [F if flip]  [O if original]  [LoL if level-on-level]
-Trend: Daily [Bullish/Bearish, Confirmed/Unconfirmed, Trending/Ranging] | Weekly [same] — [Aligned/Conflicting]
+Trend fit: [Aligned/Conflicting] (against the header's trend reading — don't restate the full reading here)
 
-Daily zones only — omit this line and the two below entirely for Weekly zones:
-Valuation: [Extreme Overvalued / Overvalued / Neutral / Undervalued / Extreme Undervalued] ([raw value]) — [indicator used] — or "unreadable" if the read failed
+Daily zones only — omit these three lines entirely for Weekly zones:
 Entry/SL/TP: [entry] / [SL] / [TP at 2R]
 Path: [Clear / Boxed in — detail]
-
-SUGGESTED RISK TIER (Daily zones only — omit for Weekly): [2% / 1.5% / 1% / 0.5%]
+SUGGESTED RISK TIER: [2% / 1.5% / 1% / 0.5%]
 
 If no active zones on either timeframe: "No active zones on [pair] — Weekly or Daily."
