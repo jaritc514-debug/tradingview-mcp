@@ -173,8 +173,8 @@ Rule 4 — HTF Coverage:
 Rule 5 — Leg-Out Quality:
 "Not tagged by the indicator — compute it. Pull candles via data_get_ohlcv around the zone's formation and classify the candle that broke the base: ≤49% body = indecisive, 50-75% = decisive, >75% (and abnormally large vs. surrounding candles) = explosive. Leg-out quality = Explosive or Decisive. An indecisive breaking candle is unusual — the indicator likely wouldn't have drawn the zone in the first place."
 
-Rule 6 — Valuation Confluence (tag only, unverified):
-"Read data_get_pine_tables(study_filter='Campus Valuation Tool'), or data_get_study_values as fallback. Output format not yet confirmed live — report the raw read and flag if the attempt fails or looks malformed. The benchmark varies by asset (currency pairs vs. DXY, other assets vs. interest rates) — the indicator likely selects this internally per asset; don't assume one fixed comparison. Tag only, same as trend — never exclude a zone based on this, even once verified."
+Rule 6 — Valuation Confluence (tag only, three separate indicators — pick by asset type):
+"There is no single valuation indicator — there are three, and you must pick the right one per symbol, not try all three. Currency futures, FX majors, commodities, and metals → study_filter='CampusValuationTool' (exact, one word, no spaces — a prior attempt used 'Campus Valuation Tool' with spaces and got nothing back, likely just a name mismatch, not a real read failure). Index futures (NQ/YM/ES/RTY) → study_filter='Supreme Valuation'. FX cross pairs (non-USD, e.g. EURGBP, GBPJPY) → study_filter='MTF Cross Pairs Valuation'. Read via data_get_pine_tables, or data_get_study_values as fallback. If the corrected name still fails, the indicator's bottom pane may need to be actively visible before TradingView renders its data for CDP reads. Tag only, same as trend — never exclude a zone based on this, even once readable."
 
 ## HTF Supply & Demand Scan Checklist
 
@@ -183,7 +183,7 @@ Rule 6 — Valuation Confluence (tag only, unverified):
 3. HTF Coverage: does a Daily zone sit inside a Weekly zone of the same type?
 4. Leg-out quality: classify the breaking candle from raw OHLCV (Rule 5)
 5. Trend tag: Trend Direction Pro Daily + Weekly rows (Rule 1 — never disqualifies)
-6. Valuation tag: Campus Valuation Tool, unverified (Rule 6 — never disqualifies)
+6. Valuation tag: pick CampusValuationTool / Supreme Valuation / MTF Cross Pairs Valuation by asset type (Rule 6 — never disqualifies)
 7. Profit check: nearest opposing Fresh/1st Touch zone in the direction out of this zone — Clear or Boxed in
 8. Risk tier: map to 1.5% / 1% / 0.5% per rules.json based on timeframe, freshness, leg-out quality, and HTF Coverage
 9. Report the zone regardless of trend/valuation alignment — those are tags for the trader's judgment, not gates

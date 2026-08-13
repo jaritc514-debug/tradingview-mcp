@@ -54,13 +54,15 @@ FOR EACH SYMBOL — run silently, no mid-scan output:
    - data_get_pine_tables(study_filter="Trend Direction Pro") → Daily and Weekly rows
    - Tag each zone trend-aligned or trend-conflicting. Never excludes a zone.
 
-7. VALUATION CONFLUENCE (tag only, currently unreadable)
-   - Leading theory (unconfirmed): Campus Valuation Tool sits in its own bottom pane and needs that pane
-     expanded (double-click) before TradingView renders its data — try checking/forcing pane visibility
-     (chart_get_state or ui_click on its legend) before reading, if a way to do that exists.
-   - data_get_pine_tables(study_filter="Campus Valuation Tool") or data_get_study_values as fallback
-   - Confirmed unreadable as of 2026-08-12 (empty on two live pairs), not just unverified. Report raw read
-     or "unreadable" if it fails. Never excludes a zone.
+7. VALUATION CONFLUENCE (tag only — pick the right indicator per asset, see rules.json)
+   - Classify each symbol first, then use the matching study_filter — don't try all three per symbol:
+       Currency future / FX major / commodity / metal → study_filter="CampusValuationTool" (no spaces)
+       Index future (NQ/YM/ES/RTY)                     → study_filter="Supreme Valuation"
+       FX cross pair (non-USD)                          → study_filter="MTF Cross Pairs Valuation"
+   - data_get_pine_tables(study_filter=<selected above>) or data_get_study_values as fallback
+   - Prior UNREADABLE result was likely the wrong name, not a real read failure — retest with the
+     corrected names before assuming the pane-visibility theory applies. Report raw read or "unreadable"
+     per symbol if it still fails. Never excludes a zone.
 
 8. PROFIT CHECK (2R-based) — DAILY ZONES ONLY
    Weekly is never entered directly — it's an odds-enhancer for HTF Coverage only. Skip this step for

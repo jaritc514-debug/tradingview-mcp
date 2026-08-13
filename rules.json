@@ -1,9 +1,11 @@
 {
   "watchlist": {
-    "fx_majors_and_crosses": "Use my saved TradingView watchlist for FX majors and cross pairs",
-    "currency_futures": "6E, 6B, 6A, 6J, 6C, 6S, 6N (Euro, Pound, Aussie, Yen, Loonie, Franc, Kiwi)",
-    "index_futures": "NQ, YM, ES, RTY (Nasdaq, Dow, S&P, Russell)",
-    "commodities": "GC, SI, CL and others as added"
+    "source": "The 'SCAN' watchlist tab in TradingView — use watchlist_get, don't hardcode symbols. Make sure that tab is active before scanning; watchlist_get only reads whichever tab is currently visible.",
+    "fx_majors": "Single currency vs. USD (e.g. EURUSD, GBPUSD) — routes to CampusValuationTool for valuation_confluence",
+    "fx_cross_pairs": "Non-USD pairs (e.g. EURGBP, GBPJPY, AUDNZD) — routes to MTF Cross Pairs Valuation for valuation_confluence",
+    "currency_futures": "6E, 6B, 6A, 6J, 6C, 6S, 6N (Euro, Pound, Aussie, Yen, Loonie, Franc, Kiwi) — routes to CampusValuationTool",
+    "index_futures": "NQ, YM, ES, RTY (Nasdaq, Dow, S&P, Russell) — routes to Supreme Valuation",
+    "commodities": "GC, SI, CL and others as added — routes to CampusValuationTool"
   },
 
   "methodology": "HTF Supply & Demand zone trading only. OTE/Killshot is now traded manually, outside this system. Scan Weekly and Daily zones from the Supply & Demand Pro indicator. A Daily zone sitting inside a Weekly zone is confluence (HTF Coverage), not a requirement. Trend Direction Pro bias is a confluence tag, never a hard filter.",
@@ -69,12 +71,25 @@
   },
 
   "valuation_confluence": {
-    "source": "Campus Valuation Tool (TradingView port, built later than the original TradeStation .ELD version) — data_get_pine_tables(study_filter='Campus Valuation Tool') or data_get_study_values if it's not a table",
-    "status": "UNREADABLE as of 2026-08-12 — both data_get_pine_tables and data_get_study_values returned nothing on two live pairs (it doesn't even appear in the study_values list at all). Not yet fixed.",
-    "leading_theory": "This is an oscillator-style indicator rendered in its own separate pane at the bottom of the chart (not an overlay on the price chart), and the user has to double-click it for it to actually display. Likely cause: TradingView doesn't actively render/compute the Pine graphics for a collapsed or not-yet-opened bottom pane, so the CDP-based read tools have nothing to read even though the study is technically added to the chart — consistent with the existing tool convention 'Pine indicators must be visible on chart for pine graphics tools to read their data.' NOT YET CONFIRMED — needs live testing.",
-    "next_step": "Before attempting the valuation read: check whether the indicator's bottom pane is expanded. If there's a way to detect/force this via ui_click (clicking the indicator's name/legend in the bottom pane strip) or chart_get_state (listing indicator visibility state), try that first, then retry data_get_pine_tables/data_get_study_values. If ui_click can't target it, this may need a one-time manual step (leave the pane expanded before running prefilter/batch-prefilter) rather than a fully automated fix.",
-    "benchmark_varies_by_asset": "The valuation comparison is NOT one fixed benchmark across all assets — e.g. currency pairs are read vs. DXY, other assets vs. interest rates. The indicator likely already selects the correct benchmark internally per asset; confirm this once it's actually readable, rather than assuming one comparison applies everywhere.",
-    "rule": "Tag only, same as trend_confluence, pending confirmation. Never filter zones out based on valuation until explicitly revisited."
+    "description": "Three SEPARATE valuation oscillators, each covering different asset types — not one indicator that auto-selects its benchmark internally. Pick the right one based on what's being scanned. All three commonly sit in their own panes at the bottom of the chart, stacked below the price chart.",
+    "indicators": {
+      "CampusValuationTool": {
+        "applies_to": "Currency futures, FX majors (single currency vs. USD), commodities, metals",
+        "study_filter": "study_filter='CampusValuationTool' — EXACT title, one word, no spaces. Confirmed from the live chart legend 2026-08-12. Earlier read attempts used 'Campus Valuation Tool' (with spaces), which would not substring-match this and likely explains the prior UNREADABLE result on its own, independent of any pane-visibility issue."
+      },
+      "Supreme Valuation": {
+        "applies_to": "Index futures (NQ, YM, ES, RTY)",
+        "study_filter": "study_filter='Supreme Valuation'"
+      },
+      "MTF Cross Pairs Valuation (Futures Auto Detect)": {
+        "applies_to": "FX cross pairs (non-USD pairs, e.g. EURGBP, GBPJPY, AUDNZD)",
+        "study_filter": "study_filter='MTF Cross Pairs Valuation'"
+      }
+    },
+    "selection_rule": "Before reading valuation for a symbol: classify it first (currency future / FX major / commodity / metal → CampusValuationTool; index future → Supreme Valuation; FX cross pair → MTF Cross Pairs Valuation), then call data_get_pine_tables with that specific study_filter. Do not try all three and guess from whichever responds.",
+    "status": "UNREADABLE as of 2026-08-12 with the wrong name ('Campus Valuation Tool' with spaces). Not yet re-tested with the corrected exact name.",
+    "fallback_theory": "If the corrected name still doesn't work: these oscillators may need their bottom pane actively expanded/visible before TradingView renders their Pine graphics for CDP reads — consistent with 'Pine indicators must be visible on chart for pine graphics tools to read their data.' Try chart_get_state or ui_click on the pane's legend before the read as a second fix if the name correction alone doesn't resolve it.",
+    "rule": "Tag only, same as trend_confluence. Never filter zones out based on valuation, even once readable."
   },
 
   "profit_check": {

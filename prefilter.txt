@@ -46,16 +46,17 @@ STEP 4 — TREND CONFLUENCE (tag only)
 - Record Trend (Bullish/Bearish), Status (Confirmed/Unconfirmed), Strength (Trending/Ranging) for both
 - Tag each zone as trend-aligned or trend-conflicting. NEVER exclude a zone based on this.
 
-STEP 5 — VALUATION CONFLUENCE (tag only, currently unreadable)
-- Before reading: Campus Valuation Tool renders in its own pane at the bottom of the chart and may need
-  its pane expanded (double-click) before TradingView actually computes/renders its data — this is the
-  leading theory for why it's come back empty so far. If a way to check/force pane visibility is available
-  (chart_get_state indicator list, or ui_click on its legend), try that first.
-- data_get_pine_tables(study_filter="Campus Valuation Tool") — if this fails, try
-  data_get_study_values(study_filter="Campus Valuation Tool")
-- As of 2026-08-12 both reads came back empty on two live pairs — confirmed unreadable, not just
-  unverified. Report whatever comes back as-is, and note if the read failed or looked malformed — useful
-  signal for narrowing down the fix.
+STEP 5 — VALUATION CONFLUENCE (tag only — pick the right indicator per asset, see rules.json)
+- Classify the pair first, then use the matching study_filter — do not try all three:
+    Currency future / FX major / commodity / metal → study_filter="CampusValuationTool" (exact, no spaces)
+    Index future (NQ/YM/ES/RTY)                     → study_filter="Supreme Valuation"
+    FX cross pair (non-USD, e.g. EURGBP, GBPJPY)     → study_filter="MTF Cross Pairs Valuation"
+- data_get_pine_tables(study_filter=<the one selected above>) — if this fails, try data_get_study_values
+  with the same study_filter
+- Prior UNREADABLE result was likely just the wrong name ("Campus Valuation Tool" with spaces doesn't
+  match "CampusValuationTool"). If the corrected name still fails, the indicator's bottom pane may need
+  to be actively visible/expanded before TradingView renders its data for CDP reads — try chart_get_state
+  or ui_click on the pane's legend before retrying.
 - Tag only. NEVER exclude a zone based on this, even once readable.
 
 STEP 6 — PROFIT CHECK (2R-based, per rules.json profit_check) — DAILY ZONES ONLY
