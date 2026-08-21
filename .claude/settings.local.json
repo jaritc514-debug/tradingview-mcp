@@ -25,7 +25,15 @@
       "mcp__tradingview__pine_open",
       "mcp__tradingview__pine_get_source",
       "mcp__tradingview__pine_list_scripts",
-      "mcp__tradingview__tv_launch"
+      "mcp__tradingview__tv_launch",
+      "mcp__tradingview__data_get_indicator",
+      "mcp__tradingview__indicator_toggle_visibility",
+      "mcp__tradingview__ui_evaluate",
+      "mcp__tradingview__ui_mouse_click",
+      "mcp__tradingview__ui_keyboard",
+      "mcp__tradingview__ui_type_text",
+      "mcp__tradingview__tab_list",
+      "mcp__tradingview__pine_get_errors"
     ]
   }
 }
