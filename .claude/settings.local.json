@@ -33,7 +33,12 @@
       "mcp__tradingview__ui_keyboard",
       "mcp__tradingview__ui_type_text",
       "mcp__tradingview__tab_list",
-      "mcp__tradingview__pine_get_errors"
+      "mcp__tradingview__pine_get_errors",
+      "Bash(python3 *)",
+      "mcp__tradingview__chart_scroll_to_date",
+      "mcp__tradingview__pine_get_console",
+      "mcp__tradingview__chart_manage_indicator",
+      "mcp__tradingview__ui_find_element"
     ]
   }
 }
